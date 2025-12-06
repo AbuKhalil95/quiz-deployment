@@ -1,0 +1,86 @@
+---
+description: Critical patterns for Laravel Inertia React integration, component organization, and controller helpers
+globs:
+    - "app/Http/Controllers/**/*.php"
+    - "resources/js/pages/**/*.tsx"
+    - "resources/js/pages/**/_components/**/*.tsx"
+alwaysApply: false
+---
+
+# Laravel Inertia React Integration Patterns
+
+## Controller Pattern - CRITICAL
+
+**ALWAYS use `HandlesInertiaRequests` trait helpers** - Never check `header('X-Inertia')` directly.
+
+```php
+// ✅ Correct
+if ($this->wantsInertiaResponse($request)) {
+    return redirect()->route('admin.resource.index')->with('success', 'Message');
+}
+
+// ❌ Wrong
+if ($request->header('X-Inertia')) { ... }
+```
+
+**Pattern for all CRUD methods:**
+
+1. Validate/create/update/delete
+2. Check `$this->wantsInertiaResponse($request)` FIRST
+3. Return Inertia redirect with flash message
+4. Fallback to JSON for legacy requests
+
+**For DataTables:** Use `$this->isDataTablesRequest($request)` to distinguish from Inertia.
+
+## Component Organization - CRITICAL
+
+**Page-specific components MUST go in `_components/` subfolder:**
+
+```
+resources/js/pages/admin/Users/
+  ├── Index.tsx
+  └── _components/
+      ├── CreateUserDialog.tsx
+      └── ViewUserDialog.tsx
+```
+
+-   Page-specific dialogs/forms → `_components/` subfolder
+-   Reusable UI → `resources/js/components/ui/`
+-   Shared business logic → `resources/js/components/`
+
+## React Patterns
+
+**Always reset forms when dialogs close:**
+
+```tsx
+const handleOpenChange = (newOpen: boolean) => {
+    onOpenChange(newOpen);
+    if (!newOpen) {
+        form.reset();
+        form.clearErrors();
+    }
+};
+```
+
+**Use type-safe `route()` helper from Ziggy:**
+
+```tsx
+// ✅ Type-safe
+form.post(route("admin.users.create"), {...});
+
+// ❌ Wrong
+form.post("/admin/users", {...});
+```
+
+**Regenerate Ziggy types after route changes:**
+
+```bash
+npm run ziggy:types
+```
+
+## Critical Reminders
+
+-   **Never delete** `HandlesInertiaRequests` trait
+-   **Check Inertia FIRST** - Inertia requests are also AJAX
+-   **Preserve legacy routes** - Students use Blade, admin uses Inertia
+-   **Use `route()` helper** - Never string paths for type safety
