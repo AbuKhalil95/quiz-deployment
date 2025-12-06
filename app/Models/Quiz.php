@@ -43,7 +43,6 @@ class Quiz extends Model
             ->withTimestamps();
     }
 
-
     public function attempts()
     {
         return $this->hasMany(QuizAttempt::class);

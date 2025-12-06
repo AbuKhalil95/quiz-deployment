@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -21,6 +21,7 @@ class AuthController extends Controller
             if ($user->hasRole('admin') || $user->hasRole('teacher')) {
                 return redirect()->route('admin.dashboard');
             }
+
             return redirect()->route('student.dashboard');
         }
 
@@ -101,7 +102,7 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:users,name',],
+            'name' => ['required', 'string', 'max:255', 'unique:users,name'],
             'email' => [
                 'required',
                 'string',
@@ -137,7 +138,6 @@ class AuthController extends Controller
 
         return redirect()->route('users.index');
     }
-
 
     /**
      * Logout the user.

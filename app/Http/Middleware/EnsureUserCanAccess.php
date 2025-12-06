@@ -10,7 +10,7 @@ class EnsureUserCanAccess
 {
     /**
      * Handle an incoming request.
-     * 
+     *
      * Checks if the user can access the resource or route:
      * - If no model is provided: Only admins can access (route-level protection)
      * - If model is provided: Admins can access everything, teachers can only access resources they created
@@ -22,15 +22,16 @@ class EnsureUserCanAccess
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated.');
         }
 
         // If no model specified, this is a route-level check - only admins allowed
         if ($model === null) {
-            if (!$user->hasRole('admin')) {
+            if (! $user->hasRole('admin')) {
                 abort(403, 'Only administrators can access this resource.');
             }
+
             return $next($request);
         }
 
@@ -48,13 +49,13 @@ class EnsureUserCanAccess
                 $modelClass = $this->getModelClass($model);
                 $resource = $modelClass::find($id);
 
-                if (!$resource) {
-                    abort(404, ucfirst($model) . ' not found.');
+                if (! $resource) {
+                    abort(404, ucfirst($model).' not found.');
                 }
 
                 // Check if the resource belongs to the teacher
                 if ($resource->created_by !== $user->id) {
-                    abort(403, 'You can only access ' . $model . 's you created.');
+                    abort(403, 'You can only access '.$model.'s you created.');
                 }
             }
         }
@@ -72,7 +73,7 @@ class EnsureUserCanAccess
             'quiz' => \App\Models\Quiz::class,
         ];
 
-        if (!isset($models[$model])) {
+        if (! isset($models[$model])) {
             abort(500, "Unknown model: {$model}");
         }
 

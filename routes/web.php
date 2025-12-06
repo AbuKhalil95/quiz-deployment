@@ -18,8 +18,8 @@ use App\Http\Controllers\Student\QuizController as StudentQuizController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UserController;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 // -------------------- Guest (login / register) --------------------
 Route::middleware('guest')->group(function () {
@@ -146,18 +146,6 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::delete('/QuestionTag/{id}', [QuestionTagController::class, 'destroy'])->name('questionTag.destroy');
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
 // -------------------- Student Area --------------------
 Route::middleware(['auth'])->group(function () {
 
@@ -192,7 +180,6 @@ Route::middleware(['auth'])->group(function () {
     // View attempt details
     Route::get('/student/attempts/{attempt}/show', [AttemptController::class, 'show'])
         ->name('student.attempts.show');
-
 
     Route::get('attempts/{attempt}/resume', [AttemptController::class, 'resume'])
         ->name('student.attempts.resume');

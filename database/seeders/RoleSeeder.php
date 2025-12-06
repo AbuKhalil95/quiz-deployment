@@ -18,6 +18,6 @@ class RoleSeeder extends Seeder
             Role::firstOrCreate(['name' => $roleName]);
         }
 
-        $this->command->info('Roles created: ' . implode(', ', $roles));
+        $this->command->info('Roles created: '.implode(', ', $roles));
     }
 }

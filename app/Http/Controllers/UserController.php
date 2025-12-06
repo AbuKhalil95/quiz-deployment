@@ -6,10 +6,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Yajra\DataTables\DataTables;
-use Illuminate\Support\Facades\Auth;
+
 class UserController extends Controller
 {
-
     public function index(Request $request)
     {
         // For Inertia requests, return Inertia response
@@ -28,9 +27,9 @@ class UserController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                   <a href="javascript:void(0)" class="delete-user btn btn-danger" data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                   <a href="javascript:void(0)" class="delete-user btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                      <i class="fas fa-trash"></i>
                     </a>
                    </div>';
@@ -44,8 +43,8 @@ class UserController extends Controller
     }
 
     // <a href="javascript:void(0)" class="edit-user btn btn-primary btn-action" data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
-//     <i class="fas fa-pencil-alt"></i>
-// </a>
+    //     <i class="fas fa-pencil-alt"></i>
+    // </a>
     public function create(Request $request)
     {
         $request->validate([
@@ -75,7 +74,7 @@ class UserController extends Controller
     {
         $user = User::with('roles')->find($id);
 
-        if (!$user) {
+        if (! $user) {
             abort(404, 'User not found');
         }
 
@@ -89,7 +88,6 @@ class UserController extends Controller
         // Legacy JSON response
         return response()->json($user);
     }
-
 
     // public function edit($id)
     // {
@@ -110,12 +108,11 @@ class UserController extends Controller
     //     return response()->json(['success' => 'User updated successfully']);
     // }
 
-
     public function destroy($id)
     {
         $user = User::with('roles')->find($id);
 
-        if (!$user) {
+        if (! $user) {
             abort(404, 'User not found');
         }
 
@@ -146,16 +143,4 @@ class UserController extends Controller
         // Legacy JSON response
         return response()->json(['success' => 'User deleted successfully']);
     }
-
-
-
-
-
-
-
-
-
-
-
-
 }

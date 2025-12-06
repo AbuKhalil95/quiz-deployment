@@ -27,13 +27,13 @@ class RoleUserController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-role-user btn btn-primary btn-action " data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-role-user btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-role-user btn btn-danger  " data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-role-user btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -47,7 +47,6 @@ class RoleUserController extends Controller
         return view('Dashboard/Role-User/role-user', compact('users', 'roles'));
     }
 
-
     /**
      * Show the form for creating a new resource.
      */
@@ -57,8 +56,8 @@ class RoleUserController extends Controller
             'user_id' => $request->user_id,
             'role_id' => $request->role_id,
 
-
         ]);
+
         return response()->json(['success' => 'RoleUser saved successfully']);
     }
 
@@ -66,7 +65,7 @@ class RoleUserController extends Controller
     {
         $roleUser = Role_User::with(['user', 'role'])->find($id);
 
-        if (!$roleUser) {
+        if (! $roleUser) {
             return response()->json(['error' => 'RoleUser not found'], 404);
         }
 
@@ -85,10 +84,10 @@ class RoleUserController extends Controller
         ]);
     }
 
-
     public function edit($id)
     {
         $roleUser = Role_User::find($id);
+
         return response()->json($roleUser);
     }
 
@@ -98,16 +97,15 @@ class RoleUserController extends Controller
         $roleUser->user_id = $request->user_id;
         $roleUser->role_id = $request->role_id;
 
-
-
         $roleUser->save();
+
         return response()->json(['success' => 'RoleUser updated successfully']);
     }
-
 
     public function destroy($id)
     {
         Role_User::find($id)->delete();
+
         return response()->json(['success' => 'RoleUser deleted successfully']);
 
     }

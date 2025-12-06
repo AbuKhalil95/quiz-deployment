@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tag;
-use App\Http\Requests\StoreTagRequest;
-use App\Http\Requests\UpdateTagRequest;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 
@@ -28,13 +26,13 @@ class TagController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-Tag btn btn-primary btn-action" data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-Tag btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-Tag btn btn-danger" data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-Tag btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -46,8 +44,6 @@ class TagController extends Controller
         // Fallback to Blade view for legacy routes
         return view('Dashboard/Tag/tag');
     }
-
-
 
     public function create(Request $request)
     {
@@ -88,7 +84,7 @@ class TagController extends Controller
     {
         $tag = Tag::with('questions')->find($id);
 
-        if (!$tag) {
+        if (! $tag) {
             abort(404, 'Tag not found');
         }
 
@@ -112,10 +108,10 @@ class TagController extends Controller
         return response()->json($tag);
     }
 
-
     public function edit($id)
     {
         $tag = Tag::find($id);
+
         return response()->json($tag);
     }
 
@@ -123,7 +119,7 @@ class TagController extends Controller
     {
         $tag = Tag::find($id);
 
-        if (!$tag) {
+        if (! $tag) {
             abort(404, 'Tag not found');
         }
 
@@ -145,12 +141,11 @@ class TagController extends Controller
         return response()->json(['success' => 'Tag updated successfully']);
     }
 
-
     public function destroy($id)
     {
         $tag = Tag::find($id);
 
-        if (!$tag) {
+        if (! $tag) {
             abort(404, 'Tag not found');
         }
 
