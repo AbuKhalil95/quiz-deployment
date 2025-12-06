@@ -23,7 +23,7 @@ class QuizController extends Controller
         $questions = $quiz->questions;
 
         // If index is out of bounds, mark attempt as completed
-        if (!isset($questions[$questionIndex])) {
+        if (! isset($questions[$questionIndex])) {
             $attempt->update([
                 'ended_at' => now(),
                 'score' => $attempt->answers()->where('is_correct', true)->count(),
@@ -70,7 +70,7 @@ class QuizController extends Controller
             ['question_id' => $question->id],
             [
                 'selected_option_id' => $selectedOptionId,
-                'is_correct' => $isCorrect
+                'is_correct' => $isCorrect,
             ]
         );
 
@@ -88,7 +88,6 @@ class QuizController extends Controller
         // Redirect to next question
         return redirect()->route('student.attempts.take.single', [$attempt->id, $questionIndex + 1]);
     }
-
 
     /**
      * Show quiz info page before starting the quiz.
@@ -120,8 +119,4 @@ class QuizController extends Controller
 
         return redirect()->route('student.attempts.take.single', [$attempt->id, 0]);
     }
-
-
-
-    
 }

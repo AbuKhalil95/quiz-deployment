@@ -9,12 +9,13 @@ class Role_User extends Model
 {
     /** @use HasFactory<\Database\Factories\RoleUserFactory> */
     use HasFactory;
+
     protected $table = 'role_user';
+
     protected $fillable = [
         'user_id',
         'role_id',
     ];
-
 
     public function user()
     {

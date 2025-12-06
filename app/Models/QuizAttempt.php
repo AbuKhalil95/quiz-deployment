@@ -9,6 +9,7 @@ class QuizAttempt extends Model
 {
     /** @use HasFactory<\Database\Factories\QuizAttemptFactory> */
     use HasFactory;
+
     protected $fillable = [
         'quiz_id',
         'student_id',

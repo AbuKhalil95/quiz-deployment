@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {

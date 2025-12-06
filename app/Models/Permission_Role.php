@@ -10,11 +10,9 @@ class Permission_Role extends Model
     /** @use HasFactory<\Database\Factories\PermissionRoleFactory> */
     use HasFactory;
 
-
     protected $table = 'permission_role';
 
     protected $fillable = ['role_id', 'permission_id'];
-
 
     public function permission()
     {

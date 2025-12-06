@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Question;
 use App\Models\QuestionTag;
-
 use App\Models\Tag;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
@@ -28,13 +27,13 @@ class QuestionTagController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-question-tag btn btn-primary btn-action " data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-question-tag btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-question-tag btn btn-danger  " data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-question-tag btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -48,7 +47,6 @@ class QuestionTagController extends Controller
         return view('Dashboard/Question-Tag/question-tag', compact('questions', 'tags'));
     }
 
-
     /**
      * Show the form for creating a new resource.
      */
@@ -58,8 +56,8 @@ class QuestionTagController extends Controller
             'question_id' => $request->question_id,
             'tag_id' => $request->tag_id,
 
-
         ]);
+
         return response()->json(['success' => 'Question Tag saved successfully']);
     }
 
@@ -67,7 +65,7 @@ class QuestionTagController extends Controller
     {
         $questionTag = QuestionTag::with(['question', 'tag'])->find($id);
 
-        if (!$questionTag) {
+        if (! $questionTag) {
             return response()->json(['error' => 'Question Tag not found'], 404);
         }
 
@@ -86,10 +84,10 @@ class QuestionTagController extends Controller
         ]);
     }
 
-
     public function edit($id)
     {
         $questionTag = QuestionTag::find($id);
+
         return response()->json($questionTag);
     }
 
@@ -99,16 +97,15 @@ class QuestionTagController extends Controller
         $questionTag->question_id = $request->question_id;
         $questionTag->tag_id = $request->tag_id;
 
-
-
         $questionTag->save();
+
         return response()->json(['success' => 'Question Tag updated successfully']);
     }
-
 
     public function destroy($id)
     {
         QuestionTag::find($id)->delete();
+
         return response()->json(['success' => 'Question Tag deleted successfully']);
 
     }

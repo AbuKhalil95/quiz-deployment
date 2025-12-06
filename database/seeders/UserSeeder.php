@@ -25,7 +25,7 @@ class UserSeeder extends Seeder
 
         // Assign admin role
         $adminRole = Role::where('name', 'admin')->first();
-        if ($adminRole && !$admin->hasRole('admin')) {
+        if ($adminRole && ! $admin->hasRole('admin')) {
             $admin->roles()->attach($adminRole->id);
             $this->command->info('Admin user created: admin@quizzes.com / password');
         }
@@ -41,7 +41,7 @@ class UserSeeder extends Seeder
 
         // Assign teacher role
         $teacherRole = Role::where('name', 'teacher')->first();
-        if ($teacherRole && !$teacher->hasRole('teacher')) {
+        if ($teacherRole && ! $teacher->hasRole('teacher')) {
             $teacher->roles()->attach($teacherRole->id);
             $this->command->info('Teacher user created: teacher@quizzes.com / password');
         }
@@ -57,7 +57,7 @@ class UserSeeder extends Seeder
 
         // Assign student role
         $studentRole = Role::where('name', 'student')->first();
-        if ($studentRole && !$student->hasRole('student')) {
+        if ($studentRole && ! $student->hasRole('student')) {
             $student->roles()->attach($studentRole->id);
             $this->command->info('Student user created: student@quizzes.com / password');
         }

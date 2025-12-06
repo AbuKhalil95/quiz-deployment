@@ -9,17 +9,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\DataTables;
 
-
 class QuestionController extends Controller
 {
-
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = $this->user();
         $query = Question::with(['subject', 'tags', 'options']);
 
-        // Teachers can only see their own questions
-        if ($user && $user->hasRole('teacher') && !$user->hasRole('admin')) {
+        // Teachers can only see questions they have created
+        if ($user && $user->hasRole('teacher') && ! $user->hasRole('admin')) {
             $query->where('created_by', $user->id);
         }
 
@@ -43,21 +41,22 @@ class QuestionController extends Controller
                 })
                 ->addColumn('question_text', function ($row) {
                     $text = $row->question_text;
-                    $shortText = strlen($text) > 100 ? substr($text, 0, 100) . '...' : $text;
-                    return '<span class="short-text">' . $shortText . '</span>
-                <span class="full-text" style="display:none;">' . $text . '</span>
-                ' . (strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
+                    $shortText = strlen($text) > 100 ? substr($text, 0, 100).'...' : $text;
+
+                    return '<span class="short-text">'.$shortText.'</span>
+                <span class="full-text" style="display:none;">'.$text.'</span>
+                '.(strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
                 })
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-question btn btn-primary btn-action" data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-question btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-question btn btn-danger" data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-question btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -68,9 +67,9 @@ class QuestionController extends Controller
 
         // Fallback to Blade view for legacy routes
         $subjects = Subject::select('id', 'name')->get();
+
         return view('Dashboard/Question/question', compact('subjects'));
     }
-
 
     /**
      * Show the form for creating a new resource.
@@ -89,7 +88,7 @@ class QuestionController extends Controller
 
         // Ensure at least one option is marked as correct
         $hasCorrectOption = collect($request->options)->contains('is_correct', true);
-        if (!$hasCorrectOption) {
+        if (! $hasCorrectOption) {
             return back()->withErrors([
                 'options' => 'At least one option must be marked as correct.',
             ])->withInput();
@@ -129,7 +128,7 @@ class QuestionController extends Controller
     {
         $question = Question::with(['subject', 'tags', 'options'])->find($id);
 
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 
@@ -173,11 +172,10 @@ class QuestionController extends Controller
         ]);
     }
 
-
     public function edit($id)
     {
         $question = Question::with(['subject', 'tags', 'options'])->find($id);
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 
@@ -196,7 +194,7 @@ class QuestionController extends Controller
     {
         $question = Question::find($id);
 
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 
@@ -212,7 +210,7 @@ class QuestionController extends Controller
 
         // Ensure at least one option is marked as correct
         $hasCorrectOption = collect($request->options)->contains('is_correct', true);
-        if (!$hasCorrectOption) {
+        if (! $hasCorrectOption) {
             return back()->withErrors([
                 'options' => 'At least one option must be marked as correct.',
             ])->withInput();
@@ -250,12 +248,11 @@ class QuestionController extends Controller
         return response()->json(['success' => 'Question updated successfully']);
     }
 
-
     public function destroy($id)
     {
         $question = Question::find($id);
 
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 

@@ -136,4 +136,3 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::post('/admin/question-tags/{id}', [QuestionTagController::class, 'update'])->name('admin.questionTags.update');
     Route::delete('/admin/question-tags/{id}', [QuestionTagController::class, 'destroy'])->name('admin.questionTags.destroy');
 });
-

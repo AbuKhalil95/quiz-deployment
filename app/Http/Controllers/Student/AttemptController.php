@@ -29,8 +29,6 @@ class AttemptController extends Controller
         return view('student.attempts-show', compact('attempt'));
     }
 
-
-
     public function resume(QuizAttempt $attempt)
     {
         if ($attempt->student_id !== auth()->id()) {
@@ -43,12 +41,13 @@ class AttemptController extends Controller
 
         // Find the next unanswered question
         $nextIndex = $questions->search(function ($question) use ($attempt) {
-            return !$attempt->answers->contains('question_id', $question->id);
+            return ! $attempt->answers->contains('question_id', $question->id);
         });
 
         // If all questions are answered, mark as finished
         if ($nextIndex === false) {
             $attempt->update(['ended_at' => now()]);
+
             return redirect()->route('student.attempts.show', $attempt->id)
                 ->with('success', 'Quiz already completed!');
         }
@@ -56,6 +55,4 @@ class AttemptController extends Controller
         // Redirect to the next unanswered question
         return redirect()->route('student.attempts.take.single', [$attempt->id, $nextIndex]);
     }
-
-
 }

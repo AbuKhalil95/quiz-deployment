@@ -16,14 +16,13 @@ class QuizQuestion extends Model
         'order',
     ];
 
-
-     public function quiz()
+    public function quiz()
     {
         return $this->belongsTo(Quiz::class, 'quiz_id');
     }
 
     public function question()
     {
-        return $this->belongsTo(Question::class, 'question_id'); 
+        return $this->belongsTo(Question::class, 'question_id');
     }
 }

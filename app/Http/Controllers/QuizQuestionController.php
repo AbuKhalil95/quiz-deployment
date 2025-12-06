@@ -23,22 +23,23 @@ class QuizQuestionController extends Controller
                 })
                 ->addColumn('question_text', function ($row) {
                     $text = $row->question ? $row->question->question_text : '';
-                    $shortText = strlen($text) > 100 ? substr($text, 0, 100) . '...' : $text;
-                    return '<span class="short-text">' . $shortText . '</span>
-                <span class="full-text" style="display:none;">' . $text . '</span>
-                ' . (strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
+                    $shortText = strlen($text) > 100 ? substr($text, 0, 100).'...' : $text;
+
+                    return '<span class="short-text">'.$shortText.'</span>
+                <span class="full-text" style="display:none;">'.$text.'</span>
+                '.(strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
                 })
 
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-quiz-question btn btn-primary btn-action " data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-quiz-question btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-quiz-question btn btn-danger  " data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-quiz-question btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -52,7 +53,6 @@ class QuizQuestionController extends Controller
         return view('Dashboard/Quiz-Question/quiz-question', compact('questions', 'quizzes'));
     }
 
-
     /**
      * Show the form for creating a new resource.
      */
@@ -63,9 +63,8 @@ class QuizQuestionController extends Controller
             'question_id' => $request->question_id,
             'order' => $request->order,
 
-
-
         ]);
+
         return response()->json(['success' => 'Quiz Question saved successfully']);
     }
 
@@ -73,7 +72,7 @@ class QuizQuestionController extends Controller
     {
         $quizQuestion = QuizQuestion::with(['quiz', 'question.options'])->find($id);
 
-        if (!$quizQuestion) {
+        if (! $quizQuestion) {
             return response()->json(['error' => 'Quiz Question not found'], 404);
         }
 
@@ -100,11 +99,10 @@ class QuizQuestionController extends Controller
         ]);
     }
 
-
-
     public function edit($id)
     {
         $quizQuestion = QuizQuestion::find($id);
+
         return response()->json($quizQuestion);
     }
 
@@ -115,17 +113,15 @@ class QuizQuestionController extends Controller
         $quizQuestion->question_id = $request->question_id;
         $quizQuestion->order = $request->order;
 
-
-
-
         $quizQuestion->save();
+
         return response()->json(['success' => 'Quiz Question updated successfully']);
     }
-
 
     public function destroy($id)
     {
         QuizQuestion::find($id)->delete();
+
         return response()->json(['success' => 'Quiz Question deleted successfully']);
 
     }

@@ -19,10 +19,11 @@ class QuestionOptionController extends Controller
                 ->addIndexColumn()
                 ->addColumn('question_text', function ($row) {
                     $text = $row->question ? $row->question->question_text : '';
-                    $shortText = strlen($text) > 100 ? substr($text, 0, 100) . '...' : $text;
-                    return '<span class="short-text">' . $shortText . '</span>
-                <span class="full-text" style="display:none;">' . $text . '</span>
-                ' . (strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
+                    $shortText = strlen($text) > 100 ? substr($text, 0, 100).'...' : $text;
+
+                    return '<span class="short-text">'.$shortText.'</span>
+                <span class="full-text" style="display:none;">'.$text.'</span>
+                '.(strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
                 })
                 ->editColumn('is_correct', function ($row) {
                     return $row->is_correct ? 'Correct' : 'InCorrect';
@@ -31,13 +32,13 @@ class QuestionOptionController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-question-option btn btn-primary btn-action " data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-question-option btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-question-option btn btn-danger  " data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-question-option btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -47,10 +48,8 @@ class QuestionOptionController extends Controller
         }
         $questions = Question::select('id', 'question_text')->get();
 
-
         return view('Dashboard/Question-Options/question-options', compact('questions'));
     }
-
 
     /**
      * Show the form for creating a new resource.
@@ -62,9 +61,8 @@ class QuestionOptionController extends Controller
             'option_text' => $request->option_text,
             'is_correct' => $request->is_correct,
 
-
-
         ]);
+
         return response()->json(['success' => 'Question Option saved successfully']);
     }
 
@@ -72,7 +70,7 @@ class QuestionOptionController extends Controller
     {
         $questionOption = QuestionOption::with(['question'])->find($id);
 
-        if (!$questionOption) {
+        if (! $questionOption) {
             return response()->json(['error' => 'Question Option not found'], 404);
         }
 
@@ -89,10 +87,10 @@ class QuestionOptionController extends Controller
         ]);
     }
 
-
     public function edit($id)
     {
         $questionOption = QuestionOption::find($id);
+
         return response()->json($questionOption);
     }
 
@@ -104,13 +102,14 @@ class QuestionOptionController extends Controller
         $questionOption->is_correct = $request->is_correct;
 
         $questionOption->save();
+
         return response()->json(['success' => 'Question Option updated successfully']);
     }
-
 
     public function destroy($id)
     {
         QuestionOption::find($id)->delete();
+
         return response()->json(['success' => 'Question Option deleted successfully']);
 
     }
