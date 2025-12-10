@@ -54,6 +54,25 @@ export function ViewQuizDialog({
     onOpenChange,
     quiz,
 }: ViewQuizDialogProps) {
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const questionsPerPage = 5;
+
+    if (!quiz) return null;
+
+    const totalQuestions = quiz.questions?.length || 0;
+    const totalPages = Math.ceil(totalQuestions / questionsPerPage);
+
+    const displayedQuestions = quiz.questions?.slice(
+        (currentPage - 1) * questionsPerPage,
+        currentPage * questionsPerPage
+    );
+
+    const goToPage = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+        }
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -62,71 +81,115 @@ export function ViewQuizDialog({
                     <DialogDescription>View quiz information</DialogDescription>
                 </DialogHeader>
 
-                {quiz && (
-                    <div className="grid gap-4 py-4">
+                <div className="grid gap-4 py-4">
+                    <div>
+                        <Label className="text-muted-foreground">Title</Label>
+                        <p className="text-sm font-medium">{quiz.title}</p>
+                    </div>
+                    <div>
+                        <Label className="text-muted-foreground">Mode</Label>
+                        <p className="text-sm font-medium">
+                            {formatMode(quiz.mode)}
+                        </p>
+                    </div>
+                    <div>
+                        <Label className="text-muted-foreground">Subject</Label>
+                        <p className="text-sm font-medium">
+                            {quiz.subject?.name || "N/A"}
+                        </p>
+                    </div>
+                    <div>
+                        <Label className="text-muted-foreground">
+                            Time Limit
+                        </Label>
+                        <p className="text-sm font-medium">
+                            {quiz.time_limit_minutes
+                                ? `${quiz.time_limit_minutes} minutes`
+                                : "N/A"}
+                        </p>
+                    </div>
+
+                    <div>
+                        <Label className="text-muted-foreground">
+                            Total Questions
+                        </Label>
+                        <p className="text-sm font-medium">
+                            {quiz.total_questions || "N/A"}
+                        </p>
+                    </div>
+
+                    {/* <div>
+                        <Label className="text-muted-foreground">Total Questions</Label>
+                        <p className="text-sm font-medium">{totalQuestions}</p>
+                    </div> */}
+
+                    {displayedQuestions && displayedQuestions.length > 0 ? (
                         <div>
-                            <Label className="text-muted-foreground">
-                                Title
+                            <Label className="text-muted-foreground mb-2 block">
+                                Questions ({totalQuestions})
                             </Label>
-                            <p className="text-sm font-medium">{quiz.title}</p>
-                        </div>
-                        <div>
-                            <Label className="text-muted-foreground">
-                                Mode
-                            </Label>
-                            <p className="text-sm font-medium">
-                                {formatMode(quiz.mode)}
-                            </p>
-                        </div>
-                        <div>
-                            <Label className="text-muted-foreground">
-                                Subject
-                            </Label>
-                            <p className="text-sm font-medium">
-                                {quiz.subject?.name || "N/A"}
-                            </p>
-                        </div>
-                        <div>
-                            <Label className="text-muted-foreground">
-                                Time Limit
-                            </Label>
-                            <p className="text-sm font-medium">
-                                {quiz.time_limit_minutes
-                                    ? `${quiz.time_limit_minutes} minutes`
-                                    : "N/A"}
-                            </p>
-                        </div>
-                        <div>
-                            <Label className="text-muted-foreground">
-                                Total Questions
-                            </Label>
-                            <p className="text-sm font-medium">
-                                {quiz.total_questions || "N/A"}
-                            </p>
-                        </div>
-                        {quiz.questions && quiz.questions.length > 0 ? (
-                            <div>
-                                <Label className="text-muted-foreground mb-2 block">
-                                    Questions ({quiz.questions.length})
-                                </Label>
-                                <div className="max-h-80 overflow-y-auto border rounded p-2 bg-gray-50">
-                                    <ul className="list-decimal ml-5 space-y-1">
-                                        {quiz.questions.map((q, index) => (
-                                            <li
-                                                key={q.id}
-                                                className="text-sm font-medium"
+                            <div className="max-h-80 overflow-y-auto border rounded p-2 bg-gray-50">
+                                <ul className="list-decimal ml-5 space-y-1">
+                                    {displayedQuestions.map((q) => (
+                                        <li
+                                            key={q.id}
+                                            className="text-sm font-medium"
+                                        >
+                                            {q.question.question_text}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* Pagination */}
+                            <div className="flex justify-center mt-4">
+                                <div className="flex items-center space-x-1">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={currentPage === 1}
+                                        onClick={() =>
+                                            goToPage(currentPage - 1)
+                                        }
+                                    >
+                                        Prev
+                                    </Button>
+
+                                    {[...Array(totalPages)].map((_, index) => {
+                                        const page = index + 1;
+                                        return (
+                                            <button
+                                                key={page}
+                                                onClick={() => goToPage(page)}
+                                                className={`px-3 py-1 rounded border text-sm ${
+                                                    currentPage === page
+                                                        ? "bg-blue-600 text-white"
+                                                        : "hover:bg-gray-100"
+                                                }`}
                                             >
-                                                {q.question.question_text}
-                                            </li>
-                                        ))}
-                                    </ul>
+                                                {page}
+                                            </button>
+                                        );
+                                    })}
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={currentPage === totalPages}
+                                        onClick={() =>
+                                            goToPage(currentPage + 1)
+                                        }
+                                    >
+                                        Next
+                                    </Button>
                                 </div>
                             </div>
-                        ) : (
-                            <p>No questions found</p>
-                        )}
-                    </div>
-                )}
+                        </div>
+                    ) : (
+                        <p>No questions found</p>
+                    )}
+                </div>
+
                 <DialogFooter>
                     <Button
                         variant="outline"
