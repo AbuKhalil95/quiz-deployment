@@ -20,10 +20,23 @@ import {
 } from "@/components/ui/select";
 import InputError from "@/components/input-error";
 import { toast } from "sonner";
+import axios from "axios";
+import { DialogTrigger } from "@radix-ui/react-dialog";
 
 interface Subject {
     id: number;
     name: string;
+}
+
+interface Question {
+    id: number;
+    question_text: string;
+}
+
+interface QuizQuestion {
+    id: number;
+    order: number;
+    question: Question;
 }
 
 interface Quiz {
@@ -33,6 +46,7 @@ interface Quiz {
     subject_id?: number;
     time_limit_minutes?: number;
     total_questions?: number;
+    questions?: QuizQuestion[];
 }
 
 interface EditQuizDialogProps {
@@ -40,6 +54,7 @@ interface EditQuizDialogProps {
     onOpenChange: (open: boolean) => void;
     quiz: Quiz | null;
     subjects: Subject[];
+    allQuestions: Question[]; // all available questions for editing
 }
 
 export function EditQuizDialog({
@@ -47,6 +62,7 @@ export function EditQuizDialog({
     onOpenChange,
     quiz,
     subjects,
+    allQuestions,
 }: EditQuizDialogProps) {
     const form = useForm({
         title: quiz?.title || "",
@@ -58,9 +74,9 @@ export function EditQuizDialog({
         total_questions: quiz?.total_questions
             ? String(quiz.total_questions)
             : "",
+        questions: quiz?.questions || [],
     });
 
-    // Update form when quiz changes
     React.useEffect(() => {
         if (quiz) {
             form.setData({
@@ -73,6 +89,7 @@ export function EditQuizDialog({
                 total_questions: quiz.total_questions
                     ? String(quiz.total_questions)
                     : "",
+                questions: quiz.questions || [],
             });
         }
     }, [quiz]);
@@ -88,9 +105,7 @@ export function EditQuizDialog({
                 form.clearErrors();
                 toast.success("Quiz updated successfully");
             },
-            onError: () => {
-                toast.error("Please fix the errors in the form");
-            },
+            onError: () => toast.error("Please fix the errors in the form"),
         });
     };
 
@@ -107,10 +122,116 @@ export function EditQuizDialog({
                 total_questions: quiz.total_questions
                     ? String(quiz.total_questions)
                     : "",
+                questions: quiz.questions || [],
             });
             form.clearErrors();
         }
     };
+
+    const handleDeleteQuestion = async (questionId: number) => {
+        if (!quiz) return;
+
+        try {
+            await axios.delete(
+                `/admin/quizzes/${quiz.id}/questions/${questionId}`
+            );
+            toast.success("Question deleted successfully");
+
+            // remove from local state
+            form.setData(
+                "questions",
+                form.data.questions?.filter((q) => q.id !== questionId)
+            );
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete question");
+        }
+    };
+
+    const handleEditQuestion = async (
+        quizQuestionId: number,
+        newQuestionId: number
+    ) => {
+        if (!quiz) return;
+
+        try {
+            await axios.put(
+                `/admin/quizzes/${quiz.id}/questions/${quizQuestionId}`,
+                { question_id: newQuestionId } // must match backend validation
+            );
+
+            toast.success("Question updated successfully");
+
+            // update local state
+            form.setData(
+                "questions",
+                form.data.questions?.map((q) =>
+                    q.id === quizQuestionId
+                        ? {
+                              ...q,
+                              question: allQuestions.find(
+                                  (question) => question.id === newQuestionId
+                              )!,
+                          }
+                        : q
+                )
+            );
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to update question");
+        }
+    };
+
+    const [newQuestionId, setNewQuestionId] = React.useState<number | null>(
+        null
+    );
+
+    const handleAddQuestion = async () => {
+        if (!quiz || !newQuestionId) return;
+
+        try {
+            // Send request to backend to create QuizQuestion
+            const response = await axios.post(
+                `/admin/quizzes/${quiz.id}/questions`,
+                { question_id: newQuestionId }
+            );
+
+            // Update local state
+            const addedQuestion = allQuestions.find(
+                (q) => q.id === newQuestionId
+            );
+            if (addedQuestion) {
+                form.setData("questions", [
+                    ...(form.data.questions || []),
+                    {
+                        id: response.data.quiz_question_id, // id returned from backend
+                        order: form.data.questions?.length + 1,
+                        question: addedQuestion,
+                    },
+                ]);
+            }
+
+            toast.success("Question added successfully");
+            setNewQuestionId(null);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to add question");
+        }
+    };
+
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const itemsPerPage = 5; // number of questions per page
+
+    const totalPages = form.data.questions
+        ? Math.ceil(form.data.questions.length / itemsPerPage)
+        : 1;
+
+    const paginatedQuestions = form.data.questions
+        ? form.data.questions.slice(
+              (currentPage - 1) * itemsPerPage,
+              currentPage * itemsPerPage
+          )
+        : [];
 
     if (!quiz) return null;
 
@@ -124,7 +245,8 @@ export function EditQuizDialog({
                             Update quiz information
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+
+                    <div className="grid gap-4 py-4 max-h-64 overflow-y-auto">
                         <div className="grid gap-2">
                             <Label htmlFor="title">Title</Label>
                             <Input
@@ -137,6 +259,7 @@ export function EditQuizDialog({
                             />
                             <InputError message={form.errors.title} />
                         </div>
+
                         <div className="grid gap-2">
                             <Label htmlFor="mode">Mode</Label>
                             <Select
@@ -160,6 +283,7 @@ export function EditQuizDialog({
                             </Select>
                             <InputError message={form.errors.mode} />
                         </div>
+
                         <div className="grid gap-2">
                             <Label htmlFor="subject_id">
                                 Subject (Optional)
@@ -190,6 +314,7 @@ export function EditQuizDialog({
                             </Select>
                             <InputError message={form.errors.subject_id} />
                         </div>
+
                         <div className="grid gap-2">
                             <Label htmlFor="time_limit_minutes">
                                 Time Limit (minutes, optional)
@@ -210,6 +335,7 @@ export function EditQuizDialog({
                                 message={form.errors.time_limit_minutes}
                             />
                         </div>
+
                         <div className="grid gap-2">
                             <Label htmlFor="total_questions">
                                 Total Questions (optional)
@@ -229,6 +355,7 @@ export function EditQuizDialog({
                             <InputError message={form.errors.total_questions} />
                         </div>
                     </div>
+
                     <DialogFooter>
                         <Button
                             type="button"
@@ -242,6 +369,238 @@ export function EditQuizDialog({
                         </Button>
                     </DialogFooter>
                 </form>
+
+                <div className="mt-6 grid gap-2">
+                    <Label htmlFor="new_question">Add New Question</Label>
+                    <div className="flex gap-2">
+                        <Select
+                            value={newQuestionId ? String(newQuestionId) : ""}
+                            onValueChange={(value) =>
+                                setNewQuestionId(Number(value))
+                            }
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select question" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {allQuestions
+                                    .filter(
+                                        (question) =>
+                                            !form.data.questions
+                                                ?.map((q) => q.question.id)
+                                                .includes(question.id)
+                                    )
+                                    .map((question) => (
+                                        <SelectItem
+                                            key={question.id}
+                                            value={String(question.id)}
+                                        >
+                                            {question.question_text}
+                                        </SelectItem>
+                                    ))}
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            type="button"
+                            onClick={handleAddQuestion}
+                            disabled={!newQuestionId}
+                        >
+                            Add
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Questions Table */}
+                {form.data.questions && form.data.questions.length > 0 && (
+                    <div className="mt-6">
+                        <h3 className="font-semibold mb-2">Questions</h3>
+                        <div className="border border-gray-200 max-h-64 overflow-y-auto">
+                            <table className="w-full border border-gray-200">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="p-2 border">Question</th>
+                                        <th className="p-2 border">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedQuestions.map((q) => (
+                                        <tr key={q.id}>
+                                            <td className="p-2 border">
+                                                {q.question.question_text}
+                                            </td>
+                                            <td className="p-2 border flex gap-2">
+                                                <Select
+                                                    value={String(
+                                                        q.question.id
+                                                    )}
+                                                    onValueChange={(
+                                                        newQuestionId
+                                                    ) =>
+                                                        handleEditQuestion(
+                                                            q.id,
+                                                            Number(
+                                                                newQuestionId
+                                                            )
+                                                        )
+                                                    }
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select question" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {allQuestions
+                                                            .filter(
+                                                                (question) =>
+                                                                    !form.data.questions
+                                                                        ?.map(
+                                                                            (
+                                                                                qq
+                                                                            ) =>
+                                                                                qq
+                                                                                    .question
+                                                                                    .id
+                                                                        )
+                                                                        .includes(
+                                                                            question.id
+                                                                        ) ||
+                                                                    question.id ===
+                                                                        q
+                                                                            .question
+                                                                            .id
+                                                            )
+                                                            .map((question) => (
+                                                                <SelectItem
+                                                                    key={
+                                                                        question.id
+                                                                    }
+                                                                    value={String(
+                                                                        question.id
+                                                                    )}
+                                                                >
+                                                                    {
+                                                                        question.question_text
+                                                                    }
+                                                                </SelectItem>
+                                                            ))}
+                                                    </SelectContent>
+                                                </Select>
+
+                                                <button
+                                                    className="text-red-500"
+                                                    onClick={() =>
+                                                        handleDeleteQuestion(
+                                                            q.id
+                                                        )
+                                                    }
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            <div className="flex justify-center mt-4">
+                                <div className="flex items-center space-x-1">
+                                    {/* Prev */}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={currentPage === 1}
+                                        onClick={() =>
+                                            setCurrentPage((prev) =>
+                                                Math.max(prev - 1, 1)
+                                            )
+                                        }
+                                    >
+                                        Prev
+                                    </Button>
+
+                                    {/* Page Numbers */}
+                                    {(() => {
+                                        const pages = [];
+                                        const total = totalPages;
+                                        const current = currentPage;
+                                        const maxVisible = 5;
+
+                                        // Always show page 1
+                                        pages.push(1);
+
+                                        // Sliding window range
+                                        let start = Math.max(2, current - 2);
+                                        let end = Math.min(
+                                            total - 1,
+                                            current + 2
+                                        );
+
+                                        if (current <= 3) {
+                                            end = Math.min(6, total - 1);
+                                        }
+
+                                        if (current >= total - 2) {
+                                            start = Math.max(2, total - 5);
+                                        }
+
+                                        // Ellipsis after page 1
+                                        if (start > 2) pages.push("...");
+
+                                        // Middle pages
+                                        for (let i = start; i <= end; i++)
+                                            pages.push(i);
+
+                                        // Ellipsis before last page
+                                        if (end < total - 1) pages.push("...");
+
+                                        // Always show last page
+                                        if (total > 1) pages.push(total);
+
+                                        return pages.map((page, index) =>
+                                            page === "..." ? (
+                                                <span
+                                                    key={index}
+                                                    className="px-2"
+                                                >
+                                                    ...
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    key={page}
+                                                    onClick={() =>
+                                                        setCurrentPage(
+                                                            page as number
+                                                        )
+                                                    }
+                                                    className={`px-3 py-1 rounded border text-sm ${
+                                                        currentPage === page
+                                                            ? "bg-blue-600 text-white"
+                                                            : "hover:bg-gray-100"
+                                                    }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            )
+                                        );
+                                    })()}
+
+                                    {/* Next */}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={currentPage === totalPages}
+                                        onClick={() =>
+                                            setCurrentPage((prev) =>
+                                                Math.min(prev + 1, totalPages)
+                                            )
+                                        }
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );

@@ -97,6 +97,10 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
         Route::get('/admin/quizzes/{id}/edit', [QuizController::class, 'edit'])->name('admin.quizzes.edit');
         Route::post('/admin/quizzes/{id}', [QuizController::class, 'update'])->name('admin.quizzes.update');
         Route::delete('/admin/quizzes/{id}', [QuizController::class, 'destroy'])->name('admin.quizzes.destroy');
+        Route::delete('/admin/quizzes/{quiz}/questions/{question}', [QuizController::class, 'destroyQuestion'])->name('admin.quizzes.questions.destroy');
+        Route::put('/admin/quizzes/{quiz}/questions/{question}', [QuizController::class, 'updateQuestion']);
+        Route::post('/admin/quizzes/{quiz}/questions', [QuizController::class, 'storeQuestion']);
+
     });
 
     // QuizQuestion

@@ -15,14 +15,23 @@ interface Subject {
     name: string;
 }
 
+interface QuizQuestion {
+    id: number;
+    order: number;
+    question: {
+        id: number;
+        question_text: string;
+    };
+}
+
 interface Quiz {
     id: number;
     title: string;
     mode: string;
-    subject_id?: number;
     subject?: Subject;
     time_limit_minutes?: number;
     total_questions?: number;
+    questions?: QuizQuestion[];
 }
 
 interface ViewQuizDialogProps {
@@ -52,14 +61,19 @@ export function ViewQuizDialog({
                     <DialogTitle>Quiz Details</DialogTitle>
                     <DialogDescription>View quiz information</DialogDescription>
                 </DialogHeader>
+
                 {quiz && (
                     <div className="grid gap-4 py-4">
                         <div>
-                            <Label className="text-muted-foreground">Title</Label>
+                            <Label className="text-muted-foreground">
+                                Title
+                            </Label>
                             <p className="text-sm font-medium">{quiz.title}</p>
                         </div>
                         <div>
-                            <Label className="text-muted-foreground">Mode</Label>
+                            <Label className="text-muted-foreground">
+                                Mode
+                            </Label>
                             <p className="text-sm font-medium">
                                 {formatMode(quiz.mode)}
                             </p>
@@ -90,10 +104,34 @@ export function ViewQuizDialog({
                                 {quiz.total_questions || "N/A"}
                             </p>
                         </div>
+                        {quiz.questions && quiz.questions.length > 0 ? (
+                            <div>
+                                <Label className="text-muted-foreground mb-2 block">
+                                    Questions ({quiz.questions.length})
+                                </Label>
+                                <div className="max-h-80 overflow-y-auto border rounded p-2 bg-gray-50">
+                                    <ul className="list-decimal ml-5 space-y-1">
+                                        {quiz.questions.map((q, index) => (
+                                            <li
+                                                key={q.id}
+                                                className="text-sm font-medium"
+                                            >
+                                                {q.question.question_text}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        ) : (
+                            <p>No questions found</p>
+                        )}
                     </div>
                 )}
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
                         Close
                     </Button>
                 </DialogFooter>
@@ -101,4 +139,3 @@ export function ViewQuizDialog({
         </Dialog>
     );
 }
-

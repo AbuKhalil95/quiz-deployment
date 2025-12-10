@@ -17,7 +17,8 @@ import { CreateQuizDialog } from "./_components/CreateQuizDialog";
 import { ViewQuizDialog } from "./_components/ViewQuizDialog";
 import { EditQuizDialog } from "./_components/EditQuizDialog";
 import { DeleteQuizDialog } from "./_components/DeleteQuizDialog";
-
+import axios from "axios";
+import { toast } from "sonner";
 interface Subject {
     id: number;
     name: string;
@@ -53,7 +54,7 @@ const formatMode = (mode: string) => {
     return modeMap[mode] || mode;
 };
 
-export default function Index({ quizzes, subjects, filters }: any) {
+export default function Index({ quizzes, subjects, questions, filters }: any) {
     const [search, setSearch] = useState(filters.search || "");
     const [isMounted, setIsMounted] = useState(false);
 
@@ -80,14 +81,21 @@ export default function Index({ quizzes, subjects, filters }: any) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
 
-    const handleView = (quiz: Quiz) => {
-        setSelectedQuiz(quiz);
+    const handleView = async (quiz: Quiz) => {
+        const response = await axios.get(`/admin/quizzes/${quiz.id}`);
+        setSelectedQuiz(response.data.quiz);
         setViewDialogOpen(true);
     };
-
-    const handleEdit = (quiz: Quiz) => {
-        setSelectedQuiz(quiz);
-        setEditDialogOpen(true);
+    const handleEdit = async (quiz: Quiz) => {
+        try {
+            // Fetch the full quiz with questions from the backend
+            const response = await axios.get(`/admin/quizzes/${quiz.id}`);
+            setSelectedQuiz(response.data.quiz);
+            setEditDialogOpen(true);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to fetch quiz data");
+        }
     };
 
     const handleDelete = (quiz: Quiz) => {
@@ -313,6 +321,7 @@ export default function Index({ quizzes, subjects, filters }: any) {
                     open={createDialogOpen}
                     onOpenChange={setCreateDialogOpen}
                     subjects={subjects}
+                    questions={questions}
                 />
 
                 <ViewQuizDialog
@@ -326,6 +335,7 @@ export default function Index({ quizzes, subjects, filters }: any) {
                     onOpenChange={setEditDialogOpen}
                     quiz={selectedQuiz}
                     subjects={subjects}
+                    allQuestions={questions}
                 />
 
                 <DeleteQuizDialog

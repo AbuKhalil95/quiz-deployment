@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Quiz;
+use App\Models\QuizQuestion;
 use App\Models\Subject;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,6 +33,7 @@ class QuizController extends Controller
             return \Inertia\Inertia::render('admin/Quizzes/Index', [
                 'quizzes' => $quizzes,
                 'subjects' => Subject::select('id', 'name')->get(),
+                'questions' => \App\Models\Question::select('id', 'question_text')->get(),
                 'filters' => $request->only(['search']),
             ]);
         }
@@ -86,6 +88,7 @@ class QuizController extends Controller
             'subject_id' => 'nullable|exists:subjects,id',
             'time_limit_minutes' => 'nullable|integer|min:1',
             'total_questions' => 'nullable|integer|min:1',
+
         ]);
 
         $quiz = Quiz::create([
@@ -96,6 +99,15 @@ class QuizController extends Controller
             'total_questions' => $request->total_questions,
             'created_by' => Auth::id(),
         ]);
+
+
+        foreach ($request->questions as $q) {
+            QuizQuestion::create([
+                'quiz_id' => $quiz->id,
+                'question_id' => $q['question_id'],
+                'order' => $q['order'],
+            ]);
+        }
 
         // For Inertia requests
         if ($this->wantsInertiaResponse($request)) {
@@ -108,36 +120,66 @@ class QuizController extends Controller
         return response()->json(['success' => 'Quiz saved successfully', 'quiz' => $quiz]);
     }
 
-    public function show(string $id)
+
+
+    public function storeQuestion(Request $request, $quizId)
     {
-        $quiz = Quiz::with(['subject'])->find($id);
-
-        if (!$quiz) {
-            abort(404, 'Quiz not found');
-        }
-
-        // For Inertia requests
-        if ($this->wantsInertiaResponse(request())) {
-            return \Inertia\Inertia::render('admin/Quizzes/Show', [
-                'quiz' => $quiz,
-            ]);
-        }
-
-        // Legacy JSON response
-        return response()->json([
-            'id' => $quiz->id,
-            'title' => $quiz->title,
-            'mode' => $quiz->mode,
-            'subject_id' => $quiz->subject_id,
-            'subject' => $quiz->subject ? [
-                'id' => $quiz->subject->id,
-                'name' => $quiz->subject->name,
-            ] : null,
-            'time_limit_minutes' => $quiz->time_limit_minutes,
-            'total_questions' => $quiz->total_questions,
-            'created_at' => $quiz->created_at?->toDateTimeString(),
-            'updated_at' => $quiz->updated_at?->toDateTimeString(),
+        $request->validate([
+            'question_id' => 'required|exists:questions,id',
         ]);
+
+        $quiz = Quiz::findOrFail($quizId);
+
+        $quizQuestion = QuizQuestion::create([
+            'quiz_id' => $quiz->id,
+            'question_id' => $request->question_id,
+            'order' => $quiz->questions()->count() + 1,
+        ]);
+
+        return response()->json([
+            'success' => 'Question added successfully',
+            'quiz_question_id' => $quizQuestion->id,
+        ]);
+    }
+
+
+    public function updateQuestion(Request $request, $quizId, $questionId)
+    {
+        $request->validate([
+            'question_id' => 'required|exists:questions,id',
+        ]);
+
+        $quizQuestion = QuizQuestion::where('quiz_id', $quizId)
+            ->where('id', $questionId)
+            ->firstOrFail();
+
+        $quizQuestion->question_id = $request->question_id;
+        $quizQuestion->save();
+
+        return response()->json(['success' => 'Question updated successfully']);
+    }
+
+    public function destroyQuestion($quizId, $questionId)
+    {
+        $quizQuestion = QuizQuestion::where('quiz_id', $quizId)
+            ->where('id', $questionId)
+            ->first();
+
+        if (!$quizQuestion) {
+            return response()->json(['error' => 'Question not found'], 404);
+        }
+
+        $quizQuestion->delete();
+
+        return response()->json(['success' => 'Question deleted successfully']);
+    }
+
+
+
+    public function show($id)
+    {
+        $quiz = Quiz::with(['subject', 'questions.question'])->findOrFail($id);
+        return response()->json(['quiz' => $quiz]);
     }
 
     public function edit($id)

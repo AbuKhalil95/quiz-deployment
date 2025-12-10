@@ -12,22 +12,30 @@ import {
 import InputError from "@/components/input-error";
 import { toast } from "sonner";
 import { FormDialog } from "@/components/FormDialog";
+import { Button } from "@/components/ui/button";
 
 interface Subject {
     id: number;
     name: string;
 }
 
+interface Question {
+    id: number;
+    question_text: string;
+}
+
 interface CreateQuizDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     subjects: Subject[];
+    questions: Question[] | undefined; // important fix
 }
 
 export function CreateQuizDialog({
     open,
     onOpenChange,
     subjects,
+    questions = [], // fallback fix
 }: CreateQuizDialogProps) {
     const form = useForm({
         title: "",
@@ -35,27 +43,40 @@ export function CreateQuizDialog({
         subject_id: "",
         time_limit_minutes: "",
         total_questions: "",
+        questions: [{ question_id: "", order: "" }],
     });
+
+    const addRow = () => {
+        form.setData("questions", [
+            ...form.data.questions,
+            { question_id: "", order: "" },
+        ]);
+    };
+
+    const removeRow = (index: number) => {
+        const updated = [...form.data.questions];
+        updated.splice(index, 1);
+        form.setData("questions", updated);
+    };
+
+    const updateRow = (index: number, field: string, value: string) => {
+        const updated = [...form.data.questions];
+        updated[index][field] = value;
+        form.setData("questions", updated);
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         form.post(route("admin.quizzes.create"), {
             preserveScroll: true,
             onSuccess: () => {
-                onOpenChange(false);
+                toast.success("Quiz created");
                 form.reset();
-                form.clearErrors();
-                toast.success("Quiz created successfully");
+                onOpenChange(false);
             },
-            onError: () => {
-                toast.error("Please fix the errors in the form");
-            },
+            onError: () => toast.error("Fix the errors"),
         });
-    };
-
-    const handleReset = () => {
-        form.reset();
-        form.clearErrors();
     };
 
     return (
@@ -63,96 +84,189 @@ export function CreateQuizDialog({
             open={open}
             onOpenChange={onOpenChange}
             title="Add New Quiz"
-            description="Create a new quiz"
+            description="Create a new quiz and add questions"
             submitButtonText="Create Quiz"
             onSubmit={handleSubmit}
-            onReset={handleReset}
             isProcessing={form.processing}
+            closeOnInteractOutside={false}
         >
-            <div className="grid gap-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                    id="title"
-                    value={form.data.title}
-                    onChange={(e) => form.setData("title", e.target.value)}
-                    required
-                />
-                <InputError message={form.errors.title} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="mode">Mode</Label>
-                <Select
-                    value={form.data.mode}
-                    onValueChange={(value) => form.setData("mode", value)}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select mode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="by_subject">By Subject</SelectItem>
-                        <SelectItem value="mixed_bag">Mixed Bag</SelectItem>
-                        <SelectItem value="timed">Timed</SelectItem>
-                    </SelectContent>
-                </Select>
-                <InputError message={form.errors.mode} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="subject_id">Subject (Optional)</Label>
-                <Select
-                    value={form.data.subject_id || "none"}
-                    onValueChange={(value) =>
-                        form.setData(
-                            "subject_id",
-                            value === "none" ? "" : value
-                        )
-                    }
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {subjects.map((subject) => (
-                            <SelectItem
-                                key={subject.id}
-                                value={String(subject.id)}
-                            >
-                                {subject.name}
+            <div className="max-h-96 overflow-y-auto">
+                {/* Title */}
+                <div className="grid gap-2 mb-4">
+                    <Label>Title</Label>
+                    <Input
+                        value={form.data.title}
+                        onChange={(e) => form.setData("title", e.target.value)}
+                    />
+                    <InputError message={form.errors.title} />
+                </div>
+
+                {/* Mode */}
+                <div className="grid gap-2 mb-4">
+                    <Label>Mode</Label>
+                    <Select
+                        value={form.data.mode}
+                        onValueChange={(v) => form.setData("mode", v)}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="by_subject">
+                                By Subject
                             </SelectItem>
+                            <SelectItem value="mixed_bag">Mixed Bag</SelectItem>
+                            <SelectItem value="timed">Timed</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <InputError message={form.errors.mode} />
+                </div>
+
+                {/* Subject */}
+                <div className="grid gap-2 mb-4">
+                    <Label>Subject (optional)</Label>
+                    <Select
+                        value={form.data.subject_id || ""}
+                        onValueChange={(v) =>
+                            form.setData("subject_id", v === "none" ? "" : v)
+                        }
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select subject" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {subjects.map((s) => (
+                                <SelectItem key={s.id} value={String(s.id)}>
+                                    {s.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <InputError message={form.errors.subject_id} />
+                </div>
+
+                {/* Time limit */}
+                <div className="grid gap-2 mb-4">
+                    <Label>Time Limit (minutes)</Label>
+                    <Input
+                        type="number"
+                        value={form.data.time_limit_minutes}
+                        onChange={(e) =>
+                            form.setData("time_limit_minutes", e.target.value)
+                        }
+                    />
+                    <InputError message={form.errors.time_limit_minutes} />
+                </div>
+
+                {/* Total questions */}
+                <div className="grid gap-2 mb-4">
+                    <Label>Total Questions</Label>
+                    <Input
+                        type="number"
+                        value={form.data.total_questions}
+                        onChange={(e) =>
+                            form.setData("total_questions", e.target.value)
+                        }
+                    />
+                    <InputError message={form.errors.total_questions} />
+                </div>
+
+                {/* Quiz Questions */}
+                <div className="border rounded-md p-4 mt-3">
+                    <div className="flex justify-between items-center mb-3">
+                        <Label className="text-md font-semibold">
+                            Quiz Questions
+                        </Label>
+                        <Button type="button" size="sm" onClick={addRow}>
+                            + Add Question
+                        </Button>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                        {form.data.questions.map((q, index) => (
+                            <div
+                                key={index}
+                                className="grid grid-cols-5 gap-3 mb-3 items-end"
+                            >
+                                <div className="col-span-3">
+                                    <Label>Question</Label>
+                                    <Select
+                                        value={q.question_id}
+                                        onValueChange={(v) =>
+                                            updateRow(index, "question_id", v)
+                                        }
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select question" />
+                                        </SelectTrigger>
+
+                                        <SelectContent>
+                                            {questions
+                                                .filter(
+                                                    (ques) =>
+                                                        !form.data.questions.some(
+                                                            (q2, idx) =>
+                                                                q2.question_id ===
+                                                                    String(
+                                                                        ques.id
+                                                                    ) &&
+                                                                idx !== index
+                                                        )
+                                                )
+                                                .map((ques) => (
+                                                    <SelectItem
+                                                        key={ques.id}
+                                                        value={String(ques.id)}
+                                                    >
+                                                        {ques.question_text}
+                                                    </SelectItem>
+                                                ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <InputError
+                                        message={
+                                            form.errors[
+                                                `questions.${index}.question_id`
+                                            ]
+                                        }
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label>Order</Label>
+                                    <Input
+                                        type="number"
+                                        value={q.order}
+                                        onChange={(e) =>
+                                            updateRow(
+                                                index,
+                                                "order",
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        message={
+                                            form.errors[
+                                                `questions.${index}.order`
+                                            ]
+                                        }
+                                    />
+                                </div>
+
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    type="button"
+                                    onClick={() => removeRow(index)}
+                                >
+                                    Delete
+                                </Button>
+                            </div>
                         ))}
-                    </SelectContent>
-                </Select>
-                <InputError message={form.errors.subject_id} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="time_limit_minutes">
-                    Time Limit (minutes, optional)
-                </Label>
-                <Input
-                    id="time_limit_minutes"
-                    type="number"
-                    min="1"
-                    value={form.data.time_limit_minutes}
-                    onChange={(e) =>
-                        form.setData("time_limit_minutes", e.target.value)
-                    }
-                />
-                <InputError message={form.errors.time_limit_minutes} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="total_questions">
-                    Total Questions (optional)
-                </Label>
-                <Input
-                    id="total_questions"
-                    type="number"
-                    min="1"
-                    value={form.data.total_questions}
-                    onChange={(e) =>
-                        form.setData("total_questions", e.target.value)
-                    }
-                />
-                <InputError message={form.errors.total_questions} />
+                    </div>
+                </div>
             </div>
         </FormDialog>
     );
