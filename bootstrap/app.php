@@ -22,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'can.access' => \App\Http\Middleware\EnsureUserCanAccess::class,
         ]);
 
+        // // Trust proxies to detect HTTPS correctly behind Railway's load balancer
+        // $middleware->trustProxies(at: '*');
+        // $middleware->trustHosts(at: ['*']);
+
         // Apply Inertia middleware globally
         // It only activates when controllers return Inertia responses
         // Blade routes are unaffected

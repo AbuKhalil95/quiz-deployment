@@ -1,4 +1,4 @@
-FROM php:8.4-fpm
+FROM php:8.2-fpm
 
 # Set working directory
 WORKDIR /var/www/html
@@ -43,12 +43,10 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Create necessary directories
 RUN mkdir -p /var/www/html/vendor /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose port 9000 for PHP-FPM (though nginx connects via network in docker-compose)
+# Expose port 9000
 EXPOSE 9000
-
-# Expose port 5173 for Vite dev server
-EXPOSE 5173
 
 # Use entrypoint script
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]
+
