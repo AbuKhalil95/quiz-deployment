@@ -33,13 +33,13 @@ class QuizQuestionController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-quiz-question btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-quiz-question btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-quiz-question btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-quiz-question btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -48,7 +48,9 @@ class QuizQuestionController extends Controller
                 ->make(true);
         }
         $quizzes = Quiz::select('id', 'title')->get();
-        $questions = Question::select('id', 'question_text')->get();
+        $questions = Question::where('state', Question::STATE_DONE)
+            ->select('id', 'question_text')
+            ->get();
 
         return view('Dashboard/Quiz-Question/quiz-question', compact('questions', 'quizzes'));
     }

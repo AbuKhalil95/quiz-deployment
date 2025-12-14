@@ -40,7 +40,7 @@ class EnsureUserCanAccess
             return $next($request);
         }
 
-        // For teachers, check if they own the resource
+        // For teachers, check if they own the resource or can edit it
         if ($user->hasRole('teacher')) {
             // Get the ID from route parameters
             $id = $request->route('id');
@@ -53,9 +53,37 @@ class EnsureUserCanAccess
                     abort(404, ucfirst($model).' not found.');
                 }
 
-                // Check if the resource belongs to the teacher
-                if ($resource->created_by !== $user->id) {
-                    abort(403, 'You can only access '.$model.'s you created.');
+                // For questions, allow editing if:
+                // 1. User created it and it's unassigned (initial state)
+                // 2. User is assigned to it (under-review state)
+                if ($model === 'question') {
+                    $canEdit = false;
+
+                    // User created it and it's unassigned (initial state, no reviewer)
+                    if (
+                        $resource->created_by === $user->id &&
+                        $resource->state === \App\Models\Question::STATE_INITIAL &&
+                        ! $resource->assigned_to
+                    ) {
+                        $canEdit = true;
+                    }
+
+                    // User is assigned to it and it's under review
+                    if (
+                        $resource->assigned_to === $user->id &&
+                        $resource->state === \App\Models\Question::STATE_UNDER_REVIEW
+                    ) {
+                        $canEdit = true;
+                    }
+
+                    if (! $canEdit && $resource->created_by !== $user->id) {
+                        abort(403, 'You can only edit questions you created (if unassigned) or questions assigned to you for review.');
+                    }
+                } else {
+                    // For other resources, check if the resource belongs to the teacher
+                    if ($resource->created_by !== $user->id) {
+                        abort(403, 'You can only access '.$model.'s you created.');
+                    }
                 }
             }
         }

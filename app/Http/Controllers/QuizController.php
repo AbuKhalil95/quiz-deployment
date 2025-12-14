@@ -17,12 +17,11 @@ class QuizController extends Controller
         $query = Quiz::with('subject');
 
         // Teachers can only see their own quizzes
-        if ($user && $user->hasRole('teacher') && !$user->hasRole('admin')) {
+        if ($user && $user->hasRole('teacher') && ! $user->hasRole('admin')) {
             $query->where('created_by', $user->id);
         }
 
-
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $query->where('title', 'like', "%{$search}%");
         }
@@ -33,7 +32,9 @@ class QuizController extends Controller
             return \Inertia\Inertia::render('admin/Quizzes/Index', [
                 'quizzes' => $quizzes,
                 'subjects' => Subject::select('id', 'name')->get(),
-                'questions' => \App\Models\Question::select('id', 'question_text')->get(),
+                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                    ->select('id', 'question_text')
+                    ->get(),
                 'filters' => $request->only(['search']),
             ]);
         }
@@ -59,13 +60,13 @@ class QuizController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                        <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" title="View">View</a>
+                        <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" title="View">View</a>
 
-                        <a href="javascript:void(0)" class="btn btn-primary edit-quiz" data-id="' . $row->id . '" title="Edit">
+                        <a href="javascript:void(0)" class="btn btn-primary edit-quiz" data-id="'.$row->id.'" title="Edit">
                             <i class="fas fa-pencil-alt"></i>
                         </a>
 
-                        <a href="javascript:void(0)" class="btn btn-danger delete-quiz" data-id="' . $row->id . '" title="Delete">
+                        <a href="javascript:void(0)" class="btn btn-danger delete-quiz" data-id="'.$row->id.'" title="Delete">
                             <i class="fas fa-trash"></i>
                         </a>
                     </div>';
@@ -91,6 +92,21 @@ class QuizController extends Controller
 
         ]);
 
+        // Validate that all questions are in "done" state
+        if ($request->has('questions') && is_array($request->questions)) {
+            $questionIds = array_column($request->questions, 'question_id');
+            $nonDoneQuestions = \App\Models\Question::whereIn('id', $questionIds)
+                ->where('state', '!=', \App\Models\Question::STATE_DONE)
+                ->pluck('id')
+                ->toArray();
+
+            if (! empty($nonDoneQuestions)) {
+                return back()->withErrors([
+                    'questions' => 'Only questions that are marked as done can be added to quizzes.',
+                ])->withInput();
+            }
+        }
+
         $quiz = Quiz::create([
             'title' => $request->title,
             'mode' => $request->mode,
@@ -99,7 +115,6 @@ class QuizController extends Controller
             'total_questions' => $request->total_questions,
             'created_by' => Auth::id(),
         ]);
-
 
         foreach ($request->questions as $q) {
             QuizQuestion::create([
@@ -120,8 +135,6 @@ class QuizController extends Controller
         return response()->json(['success' => 'Quiz saved successfully', 'quiz' => $quiz]);
     }
 
-
-
     public function storeQuestion(Request $request, $quizId)
     {
         $request->validate([
@@ -129,6 +142,14 @@ class QuizController extends Controller
         ]);
 
         $quiz = Quiz::findOrFail($quizId);
+
+        // Check if question is in "done" state
+        $question = \App\Models\Question::findOrFail($request->question_id);
+        if ($question->state !== \App\Models\Question::STATE_DONE) {
+            return response()->json([
+                'error' => 'Only questions that are marked as done can be added to quizzes.',
+            ], 422);
+        }
 
         $quizQuestion = QuizQuestion::create([
             'quiz_id' => $quiz->id,
@@ -141,7 +162,6 @@ class QuizController extends Controller
             'quiz_question_id' => $quizQuestion->id,
         ]);
     }
-
 
     public function updateQuestion(Request $request, $quizId, $questionId)
     {
@@ -183,15 +203,13 @@ class QuizController extends Controller
         return response()->json(['message' => 'Order updated successfully']);
     }
 
-
-
     public function destroyQuestion($quizId, $questionId)
     {
         $quizQuestion = QuizQuestion::where('quiz_id', $quizId)
             ->where('id', $questionId)
             ->first();
 
-        if (!$quizQuestion) {
+        if (! $quizQuestion) {
             return response()->json(['error' => 'Question not found'], 404);
         }
 
@@ -199,8 +217,6 @@ class QuizController extends Controller
 
         return response()->json(['success' => 'Question deleted successfully']);
     }
-
-
 
     public function show($id)
     {
@@ -216,7 +232,7 @@ class QuizController extends Controller
     {
         $quiz = Quiz::find($id);
 
-        if (!$quiz) {
+        if (! $quiz) {
             return response()->json(['error' => 'Quiz not found'], 404);
         }
 
@@ -227,7 +243,7 @@ class QuizController extends Controller
     {
         $quiz = Quiz::find($id);
 
-        if (!$quiz) {
+        if (! $quiz) {
             abort(404, 'Quiz not found');
         }
 
@@ -261,7 +277,7 @@ class QuizController extends Controller
     {
         $quiz = Quiz::find($id);
 
-        if (!$quiz) {
+        if (! $quiz) {
             abort(404, 'Quiz not found');
         }
 

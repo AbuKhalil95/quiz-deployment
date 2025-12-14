@@ -1,5 +1,6 @@
-import { Head, router } from "@inertiajs/react";
+import { Head, router, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
+import * as React from "react";
 import AdminLayout from "@/layouts/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,9 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Eye, Pencil, Trash2, CheckCircle, Clock, X } from "lucide-react";
 import { CreateQuestionDialog } from "./_components/CreateQuestionDialog";
 import { ViewQuestionDialog } from "./_components/ViewQuestionDialog";
 import { EditQuestionDialog } from "./_components/EditQuestionDialog";
@@ -37,6 +40,20 @@ interface Question {
     id: number;
     subject_id: number;
     question_text: string;
+    state?: string;
+    assigned_to?: number;
+    assigned_to_user?: {
+        id: number;
+        name: string;
+    };
+    assignedTo?: {
+        id: number;
+        name: string;
+    };
+    creator?: {
+        id: number;
+        name: string;
+    };
     subject?: Subject;
     tags?: Tag[];
     options?: Option[];
@@ -52,11 +69,53 @@ interface Props {
     };
     subjects: Subject[];
     tags: Tag[];
+    filters: {
+        search?: string;
+        tab?: string;
+        subject_id?: string;
+    };
 }
 
-export default function Index({ questions, subjects, tags, filters }: any) {
+export default function Index({ questions, subjects, tags, filters }: Props) {
+    const { auth } = usePage().props as any;
+    const currentUser = auth?.user;
+    const [activeTab, setActiveTab] = useState(filters.tab || "all");
     const [search, setSearch] = useState(filters.search || "");
+    const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
+        filters.subject_id ? parseInt(filters.subject_id) : null
+    );
     const [isMounted, setIsMounted] = useState(false);
+
+    const updateFilters = (updates: {
+        tab?: string;
+        search?: string;
+        subject_id?: number | null;
+    }) => {
+        const newTab = updates.tab !== undefined ? updates.tab : activeTab;
+        const newSearch =
+            updates.search !== undefined ? updates.search : search;
+        const newSubjectId =
+            updates.subject_id !== undefined
+                ? updates.subject_id
+                : selectedSubjectId;
+
+        const params: any = {
+            tab: newTab,
+        };
+
+        if (newSearch) {
+            params.search = newSearch;
+        }
+
+        if (newSubjectId) {
+            params.subject_id = newSubjectId;
+        }
+
+        router.get("/admin/questions", params, {
+            preserveState: true,
+            replace: true,
+        });
+    };
 
     useEffect(() => {
         if (!isMounted) {
@@ -65,15 +124,26 @@ export default function Index({ questions, subjects, tags, filters }: any) {
         }
 
         const timeout = setTimeout(() => {
-            router.get(
-                "/admin/questions",
-                { search },
-                { preserveState: true, replace: true }
-            );
+            updateFilters({ search });
         }, 500);
 
         return () => clearTimeout(timeout);
     }, [search]);
+
+    useEffect(() => {
+        if (isMounted) {
+            updateFilters({ tab: activeTab });
+        }
+    }, [activeTab]);
+
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+    };
+
+    const handleSubjectFilter = (subjectId: number | null) => {
+        setSelectedSubjectId(subjectId);
+        updateFilters({ subject_id: subjectId });
+    };
 
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -99,7 +169,218 @@ export default function Index({ questions, subjects, tags, filters }: any) {
     };
 
     const goToPage = (url: string | null) => {
-        if (url) router.get(url);
+        if (url) {
+            // Preserve current filters when navigating pages
+            const urlObj = new URL(url, window.location.origin);
+            if (!urlObj.searchParams.has("tab")) {
+                urlObj.searchParams.set("tab", activeTab);
+            }
+            if (search && !urlObj.searchParams.has("search")) {
+                urlObj.searchParams.set("search", search);
+            }
+            if (selectedSubjectId && !urlObj.searchParams.has("subject_id")) {
+                urlObj.searchParams.set(
+                    "subject_id",
+                    selectedSubjectId.toString()
+                );
+            }
+            router.get(urlObj.pathname + urlObj.search);
+        }
+    };
+
+    const handleAssign = (questionId: number) => {
+        router.post(
+            `/admin/questions/${questionId}/assign`,
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    router.reload({ only: ["questions"] });
+                },
+            }
+        );
+    };
+
+    const handleChangeState = (questionId: number, newState: string) => {
+        router.post(
+            `/admin/questions/${questionId}/change-state`,
+            {
+                state: newState,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    router.reload({ only: ["questions"] });
+                },
+            }
+        );
+    };
+
+    const renderQuestionsTable = (questionsData: any) => {
+        const showAssignedTo = activeTab !== "my-review";
+        const colSpan = showAssignedTo ? 7 : 6;
+
+        if (!questionsData || questionsData.data.length === 0) {
+            return (
+                <TableRow>
+                    <TableCell colSpan={colSpan} className="text-center">
+                        No questions found
+                    </TableCell>
+                </TableRow>
+            );
+        }
+
+        return questionsData.data.map((question: Question) => (
+            <TableRow key={question.id}>
+                <TableCell className="w-16">{question.id}</TableCell>
+                <TableCell className="max-w-md">
+                    <div
+                        className="text-sm overflow-hidden"
+                        style={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: "vertical",
+                        }}
+                    >
+                        {question.question_text}
+                    </div>
+                    {question.tags && question.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {question.tags.map((tag) => (
+                                <span
+                                    key={tag.id}
+                                    className="text-xs bg-muted px-2 py-0.5 rounded"
+                                >
+                                    {tag.tag_text}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </TableCell>
+                <TableCell>{question.subject?.name || "N/A"}</TableCell>
+                <TableCell>{question.creator?.name || "N/A"}</TableCell>
+                {showAssignedTo && (
+                    <TableCell>
+                        {question.assignedTo?.name ||
+                            question.assigned_to_user?.name ||
+                            "—"}
+                    </TableCell>
+                )}
+                {question.state && (
+                    <TableCell>
+                        <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                                question.state === "initial"
+                                    ? "bg-gray-200"
+                                    : question.state === "under-review"
+                                    ? "bg-yellow-200"
+                                    : "bg-green-200"
+                            }`}
+                        >
+                            {question.state === "initial"
+                                ? "Unassigned"
+                                : question.state === "under-review"
+                                ? "Under Review"
+                                : "Done"}
+                        </span>
+                    </TableCell>
+                )}
+                <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                        {activeTab === "review" &&
+                            question.state === "initial" && (
+                                <>
+                                    {question.creator?.id ===
+                                        currentUser?.id && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleEdit(question)}
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() =>
+                                            handleAssign(question.id)
+                                        }
+                                    >
+                                        Assign to Me
+                                    </Button>
+                                </>
+                            )}
+                        {activeTab === "my-review" &&
+                            question.state === "under-review" && (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleEdit(question)}
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() =>
+                                            handleChangeState(
+                                                question.id,
+                                                "done"
+                                            )
+                                        }
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                        Mark as Done
+                                    </Button>
+                                </>
+                            )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleView(question)}
+                        >
+                            <Eye className="h-4 w-4" />
+                        </Button>
+                        {activeTab === "all" && (
+                            <>
+                                {/* Show edit button if:
+                                    - User is admin, OR
+                                    - User created it and it's unassigned, OR
+                                    - User is assigned to it and it's under review */}
+                                {(currentUser?.roles?.includes("admin") ||
+                                    (question.creator?.id === currentUser?.id &&
+                                        question.state === "initial" &&
+                                        !question.assigned_to) ||
+                                    (question.assigned_to === currentUser?.id &&
+                                        question.state === "under-review")) && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleEdit(question)}
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                {/* Show delete button only if user created it or is admin */}
+                                {(currentUser?.roles?.includes("admin") ||
+                                    question.creator?.id ===
+                                        currentUser?.id) && (
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => handleDelete(question)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </TableCell>
+            </TableRow>
+        ));
     };
 
     return (
@@ -122,207 +403,457 @@ export default function Index({ questions, subjects, tags, filters }: any) {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {/* Search */}
-                        <div className="mb-4 flex w-[220px] gap-2">
-                            <input
-                                type="text"
-                                placeholder="Search subjects..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="border px-2 py-1 rounded w-full mb-4"
-                            />
-                        </div>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>ID</TableHead>
-                                    <TableHead>Subject</TableHead>
-                                    <TableHead>Question Text</TableHead>
-                                    <TableHead className="text-right">
-                                        Actions
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {questions.data.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={4}
-                                            className="text-center"
+                        <Tabs value={activeTab} onValueChange={handleTabChange}>
+                            <TabsList className="mb-4">
+                                <TabsTrigger value="all">
+                                    All Questions
+                                </TabsTrigger>
+                                <TabsTrigger value="review">
+                                    Available for Review
+                                </TabsTrigger>
+                                <TabsTrigger value="my-review">
+                                    <Clock className="h-4 w-4 mr-1" />
+                                    My Reviews
+                                </TabsTrigger>
+                            </TabsList>
+
+                            {/* Filters */}
+                            <div className="mb-4 space-y-3">
+                                {/* Search */}
+                                <div className="flex w-[220px] gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Search questions..."
+                                        value={search}
+                                        onChange={(e) =>
+                                            setSearch(e.target.value)
+                                        }
+                                        className="border px-2 py-1 rounded w-full"
+                                    />
+                                </div>
+
+                                {/* Subject Filter Chips */}
+                                <div className="flex flex-wrap gap-2">
+                                    <Badge
+                                        variant={
+                                            selectedSubjectId === null
+                                                ? "default"
+                                                : "outline"
+                                        }
+                                        className="cursor-pointer"
+                                        onClick={() =>
+                                            handleSubjectFilter(null)
+                                        }
+                                    >
+                                        All Subjects
+                                    </Badge>
+                                    {subjects.map((subject) => (
+                                        <Badge
+                                            key={subject.id}
+                                            variant={
+                                                selectedSubjectId === subject.id
+                                                    ? "default"
+                                                    : "outline"
+                                            }
+                                            className="cursor-pointer"
+                                            onClick={() =>
+                                                handleSubjectFilter(subject.id)
+                                            }
                                         >
-                                            No questions found
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    questions.data.map((question) => (
-                                        <TableRow key={question.id}>
-                                            <TableCell>{question.id}</TableCell>
-                                            <TableCell>
-                                                {question.subject?.name ||
-                                                    "N/A"}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="max-w-md">
-                                                    <div className="truncate">
-                                                        {question.question_text}
-                                                    </div>
-                                                    {question.tags &&
-                                                        question.tags.length >
-                                                            0 && (
-                                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                                {question.tags.map(
-                                                                    (tag) => (
-                                                                        <span
-                                                                            key={
-                                                                                tag.id
-                                                                            }
-                                                                            className="text-xs bg-muted px-2 py-0.5 rounded"
-                                                                        >
-                                                                            {
-                                                                                tag.tag_text
-                                                                            }
-                                                                        </span>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            handleView(question)
-                                                        }
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            handleEdit(question)
-                                                        }
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            handleDelete(
-                                                                question
-                                                            )
-                                                        }
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
+                                            {subject.name}
+                                            {selectedSubjectId ===
+                                                subject.id && (
+                                                <X className="h-3 w-3 ml-1" />
+                                            )}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <TabsContent value="all">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-16">
+                                                ID
+                                            </TableHead>
+                                            <TableHead>Question Text</TableHead>
+                                            <TableHead>Subject</TableHead>
+                                            <TableHead>Created By</TableHead>
+                                            {activeTab !== "my-review" && (
+                                                <TableHead>
+                                                    Assigned To
+                                                </TableHead>
+                                            )}
+                                            <TableHead>State</TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {renderQuestionsTable(questions)}
+                                    </TableBody>
+                                </Table>
 
-                        {/* Pagination */}
-                        <div className="flex justify-center mt-6">
-                            <div className="flex items-center space-x-1">
-                                {/* Prev */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!questions.prev_page_url}
-                                    onClick={() =>
-                                        goToPage(questions.prev_page_url)
-                                    }
-                                >
-                                    Prev
-                                </Button>
-
-                                {/* Page Numbers */}
-                                {(() => {
-                                    const pages = [];
-                                    const total = questions.last_page;
-                                    const current = questions.current_page;
-                                    const maxVisible = 5;
-
-                                    // Always show page 1
-                                    pages.push(1);
-
-                                    // Sliding window range
-                                    let start = Math.max(2, current - 2);
-                                    let end = Math.min(total - 1, current + 2);
-
-                                    if (current <= 3) {
-                                        end = Math.min(6, total - 1);
-                                    }
-
-                                    if (current >= total - 2) {
-                                        start = Math.max(2, total - 5);
-                                    }
-
-                                    // Ellipsis after page 1
-                                    if (start > 2) {
-                                        pages.push("...");
-                                    }
-
-                                    // Middle pages
-                                    for (let i = start; i <= end; i++) {
-                                        pages.push(i);
-                                    }
-
-                                    // Ellipsis before last page
-                                    if (end < total - 1) {
-                                        pages.push("...");
-                                    }
-
-                                    // Always show last page (if > 1)
-                                    if (total > 1) {
-                                        pages.push(total);
-                                    }
-
-                                    return pages.map((page, index) =>
-                                        page === "..." ? (
-                                            <span key={index} className="px-2">
-                                                ...
-                                            </span>
-                                        ) : (
-                                            <button
-                                                key={page}
+                                {/* Pagination */}
+                                {questions && questions.last_page > 1 && (
+                                    <div className="flex justify-center mt-6">
+                                        <div className="flex items-center space-x-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={
+                                                    !questions.prev_page_url
+                                                }
                                                 onClick={() =>
                                                     goToPage(
-                                                        `/admin/questions?page=${page}`
+                                                        questions.prev_page_url
                                                     )
                                                 }
-                                                className={`px-3 py-1 rounded border text-sm ${
-                                                    questions.current_page ===
-                                                    page
-                                                        ? "bg-blue-600 text-white"
-                                                        : "hover:bg-gray-100"
-                                                }`}
                                             >
-                                                {page}
-                                            </button>
-                                        )
-                                    );
-                                })()}
+                                                Prev
+                                            </Button>
+                                            {Array.from(
+                                                { length: questions.last_page },
+                                                (_, i) => i + 1
+                                            )
+                                                .filter((page) => {
+                                                    const current =
+                                                        questions.current_page;
+                                                    return (
+                                                        page === 1 ||
+                                                        page ===
+                                                            questions.last_page ||
+                                                        (page >= current - 2 &&
+                                                            page <= current + 2)
+                                                    );
+                                                })
+                                                .map((page, index, array) => {
+                                                    if (
+                                                        index > 0 &&
+                                                        array[index - 1] !==
+                                                            page - 1
+                                                    ) {
+                                                        return (
+                                                            <React.Fragment
+                                                                key={`ellipsis-${page}`}
+                                                            >
+                                                                <span className="px-2">
+                                                                    ...
+                                                                </span>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        goToPage(
+                                                                            `/admin/questions?page=${page}`
+                                                                        )
+                                                                    }
+                                                                    className={`px-3 py-1 rounded border text-sm ${
+                                                                        questions.current_page ===
+                                                                        page
+                                                                            ? "bg-blue-600 text-white"
+                                                                            : "hover:bg-gray-100"
+                                                                    }`}
+                                                                >
+                                                                    {page}
+                                                                </button>
+                                                            </React.Fragment>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <button
+                                                            key={page}
+                                                            onClick={() =>
+                                                                goToPage(
+                                                                    `/admin/questions?page=${page}`
+                                                                )
+                                                            }
+                                                            className={`px-3 py-1 rounded border text-sm ${
+                                                                questions.current_page ===
+                                                                page
+                                                                    ? "bg-blue-600 text-white"
+                                                                    : "hover:bg-gray-100"
+                                                            }`}
+                                                        >
+                                                            {page}
+                                                        </button>
+                                                    );
+                                                })}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={
+                                                    !questions.next_page_url
+                                                }
+                                                onClick={() =>
+                                                    goToPage(
+                                                        questions.next_page_url
+                                                    )
+                                                }
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </TabsContent>
 
-                                {/* Next */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!questions.next_page_url}
-                                    onClick={() =>
-                                        goToPage(questions.next_page_url)
-                                    }
-                                >
-                                    Next
-                                </Button>
-                            </div>
-                        </div>
+                            <TabsContent value="review">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-16">
+                                                ID
+                                            </TableHead>
+                                            <TableHead>Question Text</TableHead>
+                                            <TableHead>Subject</TableHead>
+                                            <TableHead>Created By</TableHead>
+                                            {activeTab !== "my-review" && (
+                                                <TableHead>
+                                                    Assigned To
+                                                </TableHead>
+                                            )}
+                                            <TableHead>State</TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {renderQuestionsTable(questions)}
+                                    </TableBody>
+                                </Table>
+
+                                {/* Pagination */}
+                                {questions && questions.last_page > 1 && (
+                                    <div className="flex justify-center mt-6">
+                                        <div className="flex items-center space-x-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={
+                                                    !questions.prev_page_url
+                                                }
+                                                onClick={() =>
+                                                    goToPage(
+                                                        questions.prev_page_url
+                                                    )
+                                                }
+                                            >
+                                                Prev
+                                            </Button>
+                                            {Array.from(
+                                                { length: questions.last_page },
+                                                (_, i) => i + 1
+                                            )
+                                                .filter((page) => {
+                                                    const current =
+                                                        questions.current_page;
+                                                    return (
+                                                        page === 1 ||
+                                                        page ===
+                                                            questions.last_page ||
+                                                        (page >= current - 2 &&
+                                                            page <= current + 2)
+                                                    );
+                                                })
+                                                .map((page, index, array) => {
+                                                    if (
+                                                        index > 0 &&
+                                                        array[index - 1] !==
+                                                            page - 1
+                                                    ) {
+                                                        return (
+                                                            <React.Fragment
+                                                                key={`ellipsis-${page}`}
+                                                            >
+                                                                <span className="px-2">
+                                                                    ...
+                                                                </span>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        goToPage(
+                                                                            `/admin/questions?tab=review&page=${page}`
+                                                                        )
+                                                                    }
+                                                                    className={`px-3 py-1 rounded border text-sm ${
+                                                                        questions.current_page ===
+                                                                        page
+                                                                            ? "bg-blue-600 text-white"
+                                                                            : "hover:bg-gray-100"
+                                                                    }`}
+                                                                >
+                                                                    {page}
+                                                                </button>
+                                                            </React.Fragment>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <button
+                                                            key={page}
+                                                            onClick={() =>
+                                                                goToPage(
+                                                                    `/admin/questions?tab=review&page=${page}`
+                                                                )
+                                                            }
+                                                            className={`px-3 py-1 rounded border text-sm ${
+                                                                questions.current_page ===
+                                                                page
+                                                                    ? "bg-blue-600 text-white"
+                                                                    : "hover:bg-gray-100"
+                                                            }`}
+                                                        >
+                                                            {page}
+                                                        </button>
+                                                    );
+                                                })}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={
+                                                    !questions.next_page_url
+                                                }
+                                                onClick={() =>
+                                                    goToPage(
+                                                        questions.next_page_url
+                                                    )
+                                                }
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="my-review">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-16">
+                                                ID
+                                            </TableHead>
+                                            <TableHead>Question Text</TableHead>
+                                            <TableHead>Subject</TableHead>
+                                            <TableHead>Created By</TableHead>
+                                            {activeTab !== "my-review" && (
+                                                <TableHead>
+                                                    Assigned To
+                                                </TableHead>
+                                            )}
+                                            <TableHead>State</TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {renderQuestionsTable(questions)}
+                                    </TableBody>
+                                </Table>
+
+                                {/* Pagination */}
+                                {questions && questions.last_page > 1 && (
+                                    <div className="flex justify-center mt-6">
+                                        <div className="flex items-center space-x-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={
+                                                    !questions.prev_page_url
+                                                }
+                                                onClick={() =>
+                                                    goToPage(
+                                                        questions.prev_page_url
+                                                    )
+                                                }
+                                            >
+                                                Prev
+                                            </Button>
+                                            {Array.from(
+                                                { length: questions.last_page },
+                                                (_, i) => i + 1
+                                            )
+                                                .filter((page) => {
+                                                    const current =
+                                                        questions.current_page;
+                                                    return (
+                                                        page === 1 ||
+                                                        page ===
+                                                            questions.last_page ||
+                                                        (page >= current - 2 &&
+                                                            page <= current + 2)
+                                                    );
+                                                })
+                                                .map((page, index, array) => {
+                                                    if (
+                                                        index > 0 &&
+                                                        array[index - 1] !==
+                                                            page - 1
+                                                    ) {
+                                                        return (
+                                                            <React.Fragment
+                                                                key={`ellipsis-${page}`}
+                                                            >
+                                                                <span className="px-2">
+                                                                    ...
+                                                                </span>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        goToPage(
+                                                                            `/admin/questions?tab=my-review&page=${page}`
+                                                                        )
+                                                                    }
+                                                                    className={`px-3 py-1 rounded border text-sm ${
+                                                                        questions.current_page ===
+                                                                        page
+                                                                            ? "bg-blue-600 text-white"
+                                                                            : "hover:bg-gray-100"
+                                                                    }`}
+                                                                >
+                                                                    {page}
+                                                                </button>
+                                                            </React.Fragment>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <button
+                                                            key={page}
+                                                            onClick={() =>
+                                                                goToPage(
+                                                                    `/admin/questions?tab=my-review&page=${page}`
+                                                                )
+                                                            }
+                                                            className={`px-3 py-1 rounded border text-sm ${
+                                                                questions.current_page ===
+                                                                page
+                                                                    ? "bg-blue-600 text-white"
+                                                                    : "hover:bg-gray-100"
+                                                            }`}
+                                                        >
+                                                            {page}
+                                                        </button>
+                                                    );
+                                                })}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={
+                                                    !questions.next_page_url
+                                                }
+                                                onClick={() =>
+                                                    goToPage(
+                                                        questions.next_page_url
+                                                    )
+                                                }
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </TabsContent>
+                        </Tabs>
                     </CardContent>
                 </Card>
 

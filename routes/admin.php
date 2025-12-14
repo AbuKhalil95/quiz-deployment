@@ -74,6 +74,10 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     // Question
     Route::get('/admin/questions', [QuestionController::class, 'index'])->name('admin.questions.index');
     Route::post('/admin/questions', [QuestionController::class, 'create'])->name('admin.questions.create');
+    Route::get('/admin/questions/review', [QuestionController::class, 'reviewIndex'])->name('admin.questions.review.index');
+    Route::get('/admin/questions/my-review', [QuestionController::class, 'myReviewIndex'])->name('admin.questions.myReview.index');
+    Route::post('/admin/questions/{id}/assign', [QuestionController::class, 'assign'])->name('admin.questions.assign');
+    Route::post('/admin/questions/{id}/change-state', [QuestionController::class, 'changeState'])->name('admin.questions.changeState');
     Route::middleware('can.access:question')->group(function () {
         Route::get('/admin/questions/{id}', [QuestionController::class, 'show'])->name('admin.questions.show');
         Route::get('/admin/questions/{id}/edit', [QuestionController::class, 'edit'])->name('admin.questions.edit');
@@ -102,10 +106,11 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
         Route::post('/admin/quizzes/{quiz}/questions', [QuizController::class, 'storeQuestion']);
         Route::get('/admin/questions/by-subject/{subjectId}', function ($subjectId) {
             return \App\Models\Question::where('subject_id', $subjectId)
+                ->where('state', \App\Models\Question::STATE_DONE)
                 ->select('id', 'question_text')
                 ->get();
         })->name('admin.questions.bySubject');
-        
+
         Route::put('/admin/quizzes/{quiz}/questions/{quizQuestion}/order', [QuizController::class, 'updateOrder'])
             ->name('quizzes.questions.updateOrder');
 
