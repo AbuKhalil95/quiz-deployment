@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useForm } from "@inertiajs/react";
+import { useForm, router } from "@inertiajs/react";
 import { Label } from "@/components/ui/label";
 import {
     Select,
@@ -107,10 +107,13 @@ export function EditQuestionDialog({
 
         form.post(route("admin.questions.update", question.id), {
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => {
                 onOpenChange(false);
                 form.clearErrors();
                 toast.success("Question updated successfully");
+                // Reload the current page to preserve filters and tab
+                router.reload({ only: ["questions"] });
             },
             onError: () => {
                 toast.error("Please fix the errors in the form");

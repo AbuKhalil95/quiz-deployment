@@ -326,8 +326,20 @@ class QuestionController extends Controller
 
         // For Inertia requests
         if ($this->wantsInertiaResponse($request)) {
+            // Preserve current filters (tab, search, subject_id) when redirecting
+            $queryParams = [];
+            if ($request->has('tab')) {
+                $queryParams['tab'] = $request->get('tab');
+            }
+            if ($request->has('search')) {
+                $queryParams['search'] = $request->get('search');
+            }
+            if ($request->has('subject_id')) {
+                $queryParams['subject_id'] = $request->get('subject_id');
+            }
+
             return redirect()
-                ->route('admin.questions.index')
+                ->route('admin.questions.index', $queryParams)
                 ->with('success', 'Question updated successfully');
         }
 
