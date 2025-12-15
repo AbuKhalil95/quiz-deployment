@@ -19,6 +19,16 @@ class QuestionController extends Controller
         $user = $this->user();
         $query = Question::with(['subject', 'tags', 'options', 'assignedTo', 'creator']);
 
+        if ($user && $user->hasRole('teacher')) {
+            $query->where(function ($q) use ($user) {
+                $q->where('created_by', $user->id) // own questions
+                    ->orWhereHas('creator', function ($q2) {
+                        $q2->whereHas('roles', function ($q3) {
+                            $q3->where('name', 'admin'); // admin-created questions
+                        });
+                    });
+            });
+        }
         // All users (teachers and admins) can see all questions
         // Edit/delete permissions are handled by middleware
 
@@ -39,12 +49,12 @@ class QuestionController extends Controller
         // 'all' tab shows all questions regardless of state
 
         // Subject filter
-        if ($request->has('subject_id') && ! empty($request->subject_id)) {
+        if ($request->has('subject_id') && !empty($request->subject_id)) {
             $query->where('subject_id', $request->subject_id);
         }
 
         // Search
-        if ($request->has('search') && ! empty($request->search)) {
+        if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('question_text', 'like', "%{$search}%")
@@ -72,6 +82,7 @@ class QuestionController extends Controller
                     'creator' => $question->creator ? [
                         'id' => $question->creator->id,
                         'name' => $question->creator->name,
+                        
                     ] : null,
                     'subject' => $question->subject ? [
                         'id' => $question->subject->id,
@@ -112,22 +123,22 @@ class QuestionController extends Controller
                 })
                 ->addColumn('question_text', function ($row) {
                     $text = $row->question_text;
-                    $shortText = strlen($text) > 100 ? substr($text, 0, 100).'...' : $text;
+                    $shortText = strlen($text) > 100 ? substr($text, 0, 100) . '...' : $text;
 
-                    return '<span class="short-text">'.$shortText.'</span>
-                <span class="full-text" style="display:none;">'.$text.'</span>
-                '.(strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
+                    return '<span class="short-text">' . $shortText . '</span>
+                <span class="full-text" style="display:none;">' . $text . '</span>
+                ' . (strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
                 })
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-question btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-question btn btn-primary btn-action" data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-question btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-question btn btn-danger" data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -187,7 +198,7 @@ class QuestionController extends Controller
             // Catch any other errors
             return redirect()
                 ->back()
-                ->withErrors(['file' => 'Failed to import the file: '.$e->getMessage()]);
+                ->withErrors(['file' => 'Failed to import the file: ' . $e->getMessage()]);
         }
     }
 
@@ -213,7 +224,7 @@ class QuestionController extends Controller
 
         // Ensure at least one option is marked as correct
         $hasCorrectOption = collect($request->options)->contains('is_correct', true);
-        if (! $hasCorrectOption) {
+        if (!$hasCorrectOption) {
             return back()->withErrors([
                 'options' => 'At least one option must be marked as correct.',
             ])->withInput();
@@ -223,15 +234,15 @@ class QuestionController extends Controller
         $explanations = [];
         if ($request->has('explanations')) {
             $rawExplanations = $request->explanations;
-            if (! empty($rawExplanations['correct'])) {
+            if (!empty($rawExplanations['correct'])) {
                 $explanations['correct'] = trim($rawExplanations['correct']);
             }
-            if (! empty($rawExplanations['wrong'])) {
+            if (!empty($rawExplanations['wrong'])) {
                 $explanations['wrong'] = trim($rawExplanations['wrong']);
             }
             for ($i = 1; $i <= 5; $i++) {
                 $key = "option{$i}";
-                if (! empty($rawExplanations[$key])) {
+                if (!empty($rawExplanations[$key])) {
                     $explanations[$key] = trim($rawExplanations[$key]);
                 }
             }
@@ -243,7 +254,7 @@ class QuestionController extends Controller
             'created_by' => Auth::id(),
         ];
 
-        if (! empty($explanations)) {
+        if (!empty($explanations)) {
             $questionData['explanations'] = $explanations;
         }
 
@@ -277,7 +288,7 @@ class QuestionController extends Controller
     {
         $question = Question::with(['subject', 'tags', 'options', 'assignedTo', 'creator', 'stateHistory.changedBy'])->find($id);
 
-        if (! $question) {
+        if (!$question) {
             abort(404, 'Question not found');
         }
 
@@ -376,7 +387,13 @@ class QuestionController extends Controller
     public function edit($id)
     {
         $question = Question::with(['subject', 'tags', 'options'])->find($id);
-        if (! $question) {
+        $user = $this->user();
+        // Only admin or the creator of the question can edit
+        if ($user->hasRole('teacher') && $question->created_by !== $user->id) {
+            abort(403, 'You cannot edit questions created by other teachers.');
+        }
+
+        if (!$question) {
             abort(404, 'Question not found');
         }
 
@@ -415,7 +432,12 @@ class QuestionController extends Controller
     {
         $question = Question::find($id);
 
-        if (! $question) {
+        $user = $this->user();
+        // Only admin or the creator of the question can edit
+        if ($user->hasRole('teacher') && $question->created_by !== $user->id) {
+            abort(403, 'You cannot edit questions created by other teachers.');
+        }
+        if (!$question) {
             abort(404, 'Question not found');
         }
 
@@ -440,7 +462,7 @@ class QuestionController extends Controller
 
         // Ensure at least one option is marked as correct
         $hasCorrectOption = collect($request->options)->contains('is_correct', true);
-        if (! $hasCorrectOption) {
+        if (!$hasCorrectOption) {
             return back()->withErrors([
                 'options' => 'At least one option must be marked as correct.',
             ])->withInput();
@@ -450,15 +472,15 @@ class QuestionController extends Controller
         $explanations = [];
         if ($request->has('explanations')) {
             $rawExplanations = $request->explanations;
-            if (! empty($rawExplanations['correct'])) {
+            if (!empty($rawExplanations['correct'])) {
                 $explanations['correct'] = trim($rawExplanations['correct']);
             }
-            if (! empty($rawExplanations['wrong'])) {
+            if (!empty($rawExplanations['wrong'])) {
                 $explanations['wrong'] = trim($rawExplanations['wrong']);
             }
             for ($i = 1; $i <= 5; $i++) {
                 $key = "option{$i}";
-                if (! empty($rawExplanations[$key])) {
+                if (!empty($rawExplanations[$key])) {
                     $explanations[$key] = trim($rawExplanations[$key]);
                 }
             }
@@ -493,14 +515,14 @@ class QuestionController extends Controller
         // Handle approval if requested
         if ($request->boolean('approve')) {
             $user = $this->user();
-            if (! $user) {
+            if (!$user) {
                 abort(401, 'Unauthenticated');
             }
 
             // Check if user can approve (must be assigned to question or be admin)
             $canApprove = $user->hasRole('admin') || $question->assigned_to === $user->id;
 
-            if (! $canApprove) {
+            if (!$canApprove) {
                 return back()->withErrors([
                     'message' => 'You do not have permission to approve this question.',
                 ])->withInput();
@@ -543,7 +565,7 @@ class QuestionController extends Controller
     {
         $question = Question::find($id);
 
-        if (! $question) {
+        if (!$question) {
             abort(404, 'Question not found');
         }
 
@@ -589,7 +611,7 @@ class QuestionController extends Controller
             ->where('state', Question::STATE_INITIAL);
 
         // Search
-        if ($request->has('search') && ! empty($request->search)) {
+        if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where('question_text', 'like', "%{$search}%")
                 ->orWhereHas('subject', function ($q) use ($search) {
@@ -615,7 +637,7 @@ class QuestionController extends Controller
     {
         $user = $this->user();
 
-        if (! $user) {
+        if (!$user) {
             abort(401, 'Unauthenticated');
         }
 
@@ -624,7 +646,7 @@ class QuestionController extends Controller
             ->where('state', Question::STATE_UNDER_REVIEW);
 
         // Search
-        if ($request->has('search') && ! empty($request->search)) {
+        if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where('question_text', 'like', "%{$search}%")
                 ->orWhereHas('subject', function ($q) use ($search) {
@@ -650,22 +672,22 @@ class QuestionController extends Controller
     {
         $user = $this->user();
 
-        if (! $user) {
+        if (!$user) {
             abort(401, 'Unauthenticated');
         }
 
         // Only teachers can assign questions
-        if (! $user->hasRole('teacher') && ! $user->hasRole('admin')) {
-            abort(403, 'Only teachers can assign questions for review');
+        if ($user->hasRole('teacher') && $question->created_by !== $user->id && !$question->creator->hasRole('admin')) {
+            return back()->withErrors(['message' => 'You cannot unassign questions created by other teachers.']);
         }
 
         $question = Question::find($id);
 
-        if (! $question) {
+        if (!$question) {
             abort(404, 'Question not found');
         }
 
-        if (! $question->canBeAssigned()) {
+        if (!$question->canBeAssigned()) {
             return back()->withErrors([
                 'message' => 'This question is already assigned or cannot be assigned.',
             ]);
@@ -693,19 +715,19 @@ class QuestionController extends Controller
     {
         $user = $this->user();
 
-        if (! $user) {
+        if (!$user) {
             abort(401, 'Unauthenticated');
         }
 
         $question = Question::find($id);
 
-        if (! $question) {
+        if (!$question) {
             abort(404, 'Question not found');
         }
 
         $isAdmin = $user->hasRole('admin');
 
-        if (! $question->canBeUnassigned($user->id, $isAdmin)) {
+        if (!$question->canBeUnassigned($user->id, $isAdmin)) {
             return back()->withErrors([
                 'message' => 'You cannot unassign this question.',
             ]);
@@ -733,23 +755,23 @@ class QuestionController extends Controller
     {
         $user = $this->user();
 
-        if (! $user) {
+        if (!$user) {
             abort(401, 'Unauthenticated');
         }
 
         $request->validate([
-            'state' => 'required|in:'.Question::STATE_UNDER_REVIEW.','.Question::STATE_DONE,
+            'state' => 'required|in:' . Question::STATE_UNDER_REVIEW . ',' . Question::STATE_DONE,
             'notes' => 'nullable|string|max:1000',
         ]);
 
         $question = Question::find($id);
 
-        if (! $question) {
+        if (!$question) {
             abort(404, 'Question not found');
         }
 
         // Check if user is assigned to this question or is admin
-        if (! $user->hasRole('admin')) {
+        if (!$user->hasRole('admin')) {
             if ($question->assigned_to !== $user->id) {
                 abort(403, 'You can only change state of questions assigned to you');
             }

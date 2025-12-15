@@ -73,6 +73,7 @@ export interface Question {
     creator?: {
         id: number;
         name: string;
+        roles: string;
     };
     subject?: Subject;
     tags?: Tag[];
@@ -380,15 +381,26 @@ export default function Index({ questions, subjects, filters }: Props) {
                                             <Pencil className="h-4 w-4" />
                                         </Button>
                                     )}
-                                    <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={() =>
-                                            handleAssign(question.id)
-                                        }
-                                    >
-                                        Assign to Me
-                                    </Button>
+                                    {/* Assign button: only if initial state and either admin-created or teacher’s own */}
+                                    {question.state === "initial" &&
+                                        ((question.creator?.roles?.some(
+                                            (r) => r.name === "admin"
+                                        ) &&
+                                            currentUser?.roles?.includes(
+                                                "teacher"
+                                            )) ||
+                                            question.creator?.id ===
+                                                currentUser?.id) && (
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleAssign(question.id)
+                                                }
+                                            >
+                                                Assign to Me
+                                            </Button>
+                                        )}
                                 </>
                             )}
                         {activeTab === "my-review" &&
@@ -434,16 +446,16 @@ export default function Index({ questions, subjects, filters }: Props) {
                         </Button>
                         {activeTab === "all" && (
                             <>
-                                {/* Show edit button if:
-                                    - User is admin, OR
-                                    - User created it and it's unassigned, OR
-                                    - User is assigned to it and it's under review */}
+                                {/* Edit button: admin-created questions are editable by teachers; teacher-created only editable by creator */}
                                 {(currentUser?.roles?.includes("admin") ||
+                                    (question.creator?.roles?.some(
+                                        (r) => r.name === "admin"
+                                    ) &&
+                                        currentUser?.roles?.includes(
+                                            "teacher"
+                                        )) ||
                                     (question.creator?.id === currentUser?.id &&
-                                        question.state === "initial" &&
-                                        !question.assigned_to) ||
-                                    (question.assigned_to === currentUser?.id &&
-                                        question.state === "under-review")) && (
+                                        !question.assigned_to)) && (
                                     <Button
                                         variant="outline"
                                         size="sm"
