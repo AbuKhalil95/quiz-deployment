@@ -7,14 +7,24 @@ use App\Models\QuizAttempt;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
-
+use Illuminate\Support\Facades\Auth;
 class QuizAttemptController extends Controller
 {
     public function index(Request $request)
     {
-        // Start the query
-        $query = QuizAttempt::with(['quiz', 'student'])->orderBy('created_at', 'desc');
+        $user = Auth::user();
 
+        $query = QuizAttempt::with([
+            'quiz.creator',
+            'student'
+        ])->orderBy('created_at', 'desc');
+
+        // 🔐 Teacher sees ONLY attempts of quizzes they created
+        if ($user->hasRole('teacher')) {
+            $query->whereHas('quiz', function ($q) use ($user) {
+                $q->where('created_by', $user->id);
+            });
+        }
         // Apply search if provided
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
@@ -106,12 +116,20 @@ class QuizAttemptController extends Controller
     public function show($id)
     {
         $attempt = QuizAttempt::with([
-            'quiz',
+            'quiz.creator',
             'student',
             'answers.question',
             'answers.selectedOption',
-        ])->find($id);
+        ])->findOrFail($id);
 
+        $user = Auth::user();
+
+        if (
+            $user->hasRole('teacher') &&
+            $attempt->quiz->created_by !== $user->id
+        ) {
+            abort(403);
+        }
         if (!$attempt) {
             abort(404, 'Quiz Attempt not found');
         }
