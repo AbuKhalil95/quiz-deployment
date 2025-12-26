@@ -29,6 +29,11 @@ class Quiz extends Model
         return $this->belongsTo(Subject::class);
     }
 
+    public function adaptiveAssignment()
+    {
+        return $this->hasOne(AdaptiveQuizAssignment::class);
+    }
+
     // public function questions()
     // {
     //     return $this->belongsToMany(Question::class)->withTimestamps();
@@ -47,7 +52,6 @@ class Quiz extends Model
     {
         return $this->hasMany(QuizQuestion::class)->with('question')->orderBy('order');
     }
-
 
     public function attempts()
     {

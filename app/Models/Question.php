@@ -64,6 +64,11 @@ class Question extends Model
         return $this->hasMany(QuestionStateHistory::class)->orderBy('created_at', 'desc');
     }
 
+    public function answers()
+    {
+        return $this->hasMany(QuizAnswer::class);
+    }
+
     /**
      * Check if question can be assigned (must be in initial state and not already assigned)
      */
@@ -190,5 +195,76 @@ class Question extends Model
             'changed_by' => $changedBy,
             'notes' => $notes,
         ]);
+    }
+
+    /**
+     * Get overall performance statistics for this question
+     */
+    public function getPerformanceStats(): ?array
+    {
+        $total = $this->answers()->count();
+        if ($total === 0) {
+            return null;
+        }
+
+        $correct = $this->answers()->where('is_correct', true)->count();
+
+        return [
+            'total_attempts' => $total,
+            'correct_count' => $correct,
+            'incorrect_count' => $total - $correct,
+            'accuracy_rate' => round(($correct / $total) * 100, 2),
+        ];
+    }
+
+    /**
+     * Get performance statistics for a specific student
+     */
+    public function getStudentPerformance(int $studentId): ?array
+    {
+        $answers = $this->answers()
+            ->whereHas('attempt', function ($q) use ($studentId) {
+                $q->where('student_id', $studentId);
+            })
+            ->get();
+
+        $total = $answers->count();
+        if ($total === 0) {
+            return null;
+        }
+
+        $correct = $answers->where('is_correct', true)->count();
+
+        return [
+            'total_attempts' => $total,
+            'correct_count' => $correct,
+            'incorrect_count' => $total - $correct,
+            'accuracy_rate' => round(($correct / $total) * 100, 2),
+        ];
+    }
+
+    /**
+     * Check if student has ever attempted this question
+     */
+    public function hasBeenAttemptedBy(int $studentId): bool
+    {
+        return $this->answers()
+            ->whereHas('attempt', function ($q) use ($studentId) {
+                $q->where('student_id', $studentId);
+            })
+            ->exists();
+    }
+
+    /**
+     * Check if student has ever answered this question incorrectly
+     */
+    public function hasBeenIncorrectBy(int $studentId): bool
+    {
+        return $this->answers()
+            ->whereHas('attempt', function ($q) use ($studentId) {
+                $q->where('student_id', $studentId);
+            })
+            ->where('is_correct', false)
+            ->exists();
     }
 }

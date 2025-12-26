@@ -53,7 +53,7 @@ class QuizController extends Controller
                     return match ($row->mode) {
                         'by_subject' => 'By Subject',
                         'mixed_bag' => 'Mixed Bag',
-                        'timed' => 'Timed',
+                        'adaptive' => 'Adaptive',
                         default => $row->mode,
                     };
                 })
@@ -102,7 +102,7 @@ class QuizController extends Controller
     {
         $rules = [
             'title' => 'required|string|max:255',
-            'mode' => 'required|in:by_subject,mixed_bag',
+            'mode' => 'required|in:by_subject,mixed_bag,adaptive',
             'subject_id' => 'nullable|exists:subjects,id',
             'questions' => 'required|array|min:1',
             'questions.*.question_id' => 'required|exists:questions,id',

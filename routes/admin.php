@@ -84,20 +84,18 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::post('/admin/questions', [QuestionController::class, 'create'])->name('admin.questions.create');
     Route::get('/admin/questions/review', [QuestionController::class, 'reviewIndex'])->name('admin.questions.review.index');
     Route::get('/admin/questions/my-review', [QuestionController::class, 'myReviewIndex'])->name('admin.questions.myReview.index');
+
+    // Question bulk operations
     Route::post('/admin/questions/bulk/assign', [QuestionController::class, 'bulkAssign'])->name('admin.questions.bulkAssign');
     Route::post('/admin/questions/bulk/change-state', [QuestionController::class, 'bulkChangeState'])->name('admin.questions.bulkChangeState');
     Route::delete('/admin/questions/bulk', [QuestionController::class, 'bulkDestroy'])->name('admin.questions.bulkDestroy');
 
     // Question fetching routes (for quiz creation) - must come before parameterized routes
-    Route::get('/admin/questions/by-subject/{subjectId}', function ($subjectId) {
-        return \App\Models\Question::where('subject_id', $subjectId)
-            ->where('state', \App\Models\Question::STATE_DONE)
-            ->select('id', 'question_text')
-            ->get();
-    })->name('admin.questions.bySubject');
-    Route::get('/admin/questions/by-subjects', [QuestionController::class, 'bySubjects'])
-        ->name('admin.questions.bySubjects');
+    Route::get('/admin/questions/by-subject/{subjectId}', [QuestionController::class, 'bySubject'])->name('admin.questions.bySubject');
+    Route::get('/admin/questions/by-subjects', [QuestionController::class, 'bySubjects'])->name('admin.questions.bySubjects');
+    Route::post('/admin/questions/adaptive', [QuestionController::class, 'adaptive'])->name('admin.questions.adaptive');
 
+    // Question actions
     Route::post('/admin/questions/{id}/assign', [QuestionController::class, 'assign'])->name('admin.questions.assign');
     Route::post('/admin/questions/{id}/unassign', [QuestionController::class, 'unassign'])->name('admin.questions.unassign');
     Route::post('/admin/questions/{id}/change-state', [QuestionController::class, 'changeState'])->name('admin.questions.changeState');

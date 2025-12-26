@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Imports\QuestionsImport;
+use App\Models\AdaptiveQuizAssignment;
 use App\Models\Question;
+use App\Models\Quiz;
+use App\Models\QuizQuestion;
 use App\Models\Subject;
 use App\Models\Tag;
 use Illuminate\Http\Request;
@@ -1089,6 +1092,17 @@ class QuestionController extends Controller
     }
 
     /**
+     * Get questions by single subject ID (for quiz creation)
+     */
+    public function bySubject($subjectId)
+    {
+        return Question::where('subject_id', $subjectId)
+            ->where('state', Question::STATE_DONE)
+            ->select('id', 'question_text')
+            ->get();
+    }
+
+    /**
      * Get questions by multiple subject IDs (for quiz creation)
      * If total_questions is provided, returns balanced selection across subjects
      */
@@ -1180,5 +1194,227 @@ class QuestionController extends Controller
 
         // Return all questions if no total_questions specified
         return response()->json($allQuestions->values()->toArray());
+    }
+
+    /**
+     * Generate adaptive quiz based on student performance and create quiz record
+     * Supports: worst_performing, never_attempted, recently_incorrect, weak_subjects, mixed
+     * Creates a quiz record so it can be linked to quiz attempts
+     */
+    public function adaptive(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:users,id',
+            'total_questions' => 'required|integer|min:1',
+            'strategy' => 'required|in:worst_performing,never_attempted,recently_incorrect,weak_subjects,mixed',
+            'subject_ids' => 'nullable|array',
+            'subject_ids.*' => 'exists:subjects,id',
+            'title' => 'nullable|string|max:255',
+            'time_limit_minutes' => 'nullable|integer|min:1',
+        ]);
+
+        $studentId = $request->get('student_id');
+        $total = $request->get('total_questions');
+        $strategy = $request->get('strategy');
+        $subjectIds = $request->get('subject_ids', []);
+        $title = $request->get('title');
+        $timeLimit = $request->get('time_limit_minutes');
+
+        $query = Question::where('state', Question::STATE_DONE)
+            ->with('subject:id,name');
+
+        if (! empty($subjectIds)) {
+            $query->whereIn('subject_id', $subjectIds);
+        }
+
+        $questions = collect();
+
+        switch ($strategy) {
+            case 'worst_performing':
+                // Questions with lowest overall accuracy rate (exclude questions with no attempts)
+                $allQuestions = $query->get();
+                $questions = $allQuestions->map(function ($question) {
+                    $stats = $question->getPerformanceStats();
+
+                    return [
+                        'question' => $question,
+                        'accuracy' => $stats ? $stats['accuracy_rate'] : null,
+                    ];
+                })
+                    ->filter(function ($item) {
+                        return $item['accuracy'] !== null; // Only include questions with attempts
+                    })
+                    ->sortBy('accuracy') // Lowest accuracy first
+                    ->take($total * 2)
+                    ->pluck('question');
+                break;
+
+            case 'never_attempted':
+                // Questions the student has never attempted
+                $allQuestions = $query->get();
+                $questions = $allQuestions->filter(function ($question) use ($studentId) {
+                    return ! $question->hasBeenAttemptedBy($studentId);
+                })->shuffle();
+                break;
+
+            case 'recently_incorrect':
+                // Questions the student got wrong (prioritize recent)
+                $allQuestions = $query->get();
+                $questions = $allQuestions->filter(function ($question) use ($studentId) {
+                    return $question->hasBeenIncorrectBy($studentId);
+                })->shuffle();
+                break;
+
+            case 'weak_subjects':
+                // Questions from subjects where student performs worst
+                $allQuestions = $query->get();
+                $subjectPerformance = [];
+
+                foreach ($allQuestions->groupBy('subject_id') as $subjectId => $subjectQuestions) {
+                    $totalAttempts = 0;
+                    $totalCorrect = 0;
+
+                    foreach ($subjectQuestions as $question) {
+                        $stats = $question->getStudentPerformance($studentId);
+                        if ($stats) {
+                            $totalAttempts += $stats['total_attempts'];
+                            $totalCorrect += $stats['correct_count'];
+                        }
+                    }
+
+                    if ($totalAttempts > 0) {
+                        $subjectPerformance[$subjectId] = ($totalCorrect / $totalAttempts) * 100;
+                    } else {
+                        $subjectPerformance[$subjectId] = 100; // New subjects get lowest priority
+                    }
+                }
+
+                // Sort by worst performance
+                asort($subjectPerformance);
+                $worstSubjects = array_keys(array_slice($subjectPerformance, 0, min(3, count($subjectPerformance))));
+
+                $questions = $allQuestions->filter(function ($question) use ($worstSubjects) {
+                    return in_array($question->subject_id, $worstSubjects);
+                })->shuffle();
+                break;
+
+            case 'mixed':
+            default:
+                // Mix of worst performing and never attempted
+                $allQuestions = $query->get();
+                $neverAttempted = $allQuestions->filter(function ($question) use ($studentId) {
+                    return ! $question->hasBeenAttemptedBy($studentId);
+                });
+
+                $worstPerforming = $allQuestions->map(function ($question) use ($studentId) {
+                    $stats = $question->getStudentPerformance($studentId);
+
+                    return [
+                        'question' => $question,
+                        'accuracy' => $stats ? $stats['accuracy_rate'] : 50, // New questions get medium priority
+                    ];
+                })->sortBy('accuracy')->pluck('question');
+
+                // Mix: 50% never attempted, 50% worst performing
+                $half = (int) ceil($total / 2);
+                $questions = $neverAttempted->take($half)
+                    ->merge($worstPerforming->take($total - $half))
+                    ->shuffle();
+                break;
+        }
+
+        // Balance across subjects if subject_ids provided
+        if (! empty($subjectIds) && $questions->count() > $total) {
+            $questionsBySubject = $questions->groupBy('subject_id');
+            $questionsPerSubject = (int) floor($total / count($subjectIds));
+            $remainder = $total % count($subjectIds);
+
+            $selected = collect();
+            $index = 0;
+            foreach ($subjectIds as $subjectId) {
+                $count = $questionsPerSubject + ($index < $remainder ? 1 : 0);
+                $subjectQuestions = $questionsBySubject->get($subjectId, collect())->shuffle();
+                $selected = $selected->merge($subjectQuestions->take($count));
+                $index++;
+            }
+
+            // Fill remaining if needed
+            if ($selected->count() < $total) {
+                $remaining = $questions->filter(function ($q) use ($selected) {
+                    return ! $selected->contains('id', $q->id);
+                })->shuffle();
+                $selected = $selected->merge($remaining->take($total - $selected->count()));
+            }
+
+            $questions = $selected->shuffle()->take($total);
+        } else {
+            $questions = $questions->shuffle()->take($total);
+        }
+
+        // Create quiz record for this adaptive quiz
+        $strategyNames = [
+            'worst_performing' => 'Worst Performing',
+            'never_attempted' => 'Never Attempted',
+            'recently_incorrect' => 'Review Incorrect',
+            'weak_subjects' => 'Weak Subjects',
+            'mixed' => 'Mixed Challenge',
+        ];
+
+        $student = \App\Models\User::find($studentId);
+        $quizTitle = $title ?: sprintf(
+            'Challenge: %s - %s',
+            $strategyNames[$strategy] ?? 'Adaptive',
+            $student ? $student->name : 'Student'
+        );
+
+        $quiz = Quiz::create([
+            'title' => $quizTitle,
+            'mode' => 'adaptive', // Mark as adaptive for querying/filtering
+            'subject_id' => ! empty($subjectIds) && count($subjectIds) === 1 ? $subjectIds[0] : null,
+            'total_questions' => $questions->count(),
+            'time_limit_minutes' => $timeLimit,
+            'created_by' => Auth::id(),
+        ]);
+
+        // Store adaptive quiz metadata in separate table
+        AdaptiveQuizAssignment::create([
+            'quiz_id' => $quiz->id,
+            'target_student_id' => $studentId, // The student this quiz was generated for
+            'strategy' => $strategy,
+            'subject_ids' => ! empty($subjectIds) ? $subjectIds : null,
+        ]);
+
+        // Store questions in quiz_questions table
+        $questions->each(function ($question, $index) use ($quiz) {
+            QuizQuestion::create([
+                'quiz_id' => $quiz->id,
+                'question_id' => $question->id,
+                'order' => $index + 1,
+            ]);
+        });
+
+        // Return quiz with questions
+        $quiz->load('questions.subject');
+
+        return response()->json([
+            'quiz' => [
+                'id' => $quiz->id,
+                'title' => $quiz->title,
+                'mode' => $quiz->mode,
+                'total_questions' => $quiz->total_questions,
+                'time_limit_minutes' => $quiz->time_limit_minutes,
+            ],
+            'questions' => $questions->values()->map(function ($question) {
+                return [
+                    'id' => $question->id,
+                    'question_text' => $question->question_text,
+                    'subject_id' => $question->subject_id,
+                    'subject' => $question->subject ? [
+                        'id' => $question->subject->id,
+                        'name' => $question->subject->name,
+                    ] : null,
+                ];
+            })->toArray(),
+        ]);
     }
 }
