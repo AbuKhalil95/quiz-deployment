@@ -14,6 +14,7 @@ import {
 import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CreateTagDialog } from "./_components/CreateTagDialog";
+import { SmartPagination } from "@/components/common/SmartPagination";
 import { ViewTagDialog } from "./_components/ViewTagDialog";
 import { EditTagDialog } from "./_components/EditTagDialog";
 import { DeleteTagDialog } from "./_components/DeleteTagDialog";
@@ -260,97 +261,15 @@ export default function Index({ tags, filters }: Props) {
                             </TableBody>
                         </Table>
 
-                        {/* Pagination */}
-                        <div className="flex justify-center mt-6">
-                            <div className="flex items-center space-x-1">
-                                {/* Prev */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!tags.prev_page_url}
-                                    onClick={() => goToPage(tags.prev_page_url)}
-                                >
-                                    Prev
-                                </Button>
-
-                                {/* Page Numbers */}
-                                {(() => {
-                                    const pages = [];
-                                    const total = tags.last_page;
-                                    const current = tags.current_page;
-                                    const maxVisible = 5;
-
-                                    // Always show page 1
-                                    pages.push(1);
-
-                                    // Sliding window range
-                                    let start = Math.max(2, current - 2);
-                                    let end = Math.min(total - 1, current + 2);
-
-                                    if (current <= 3) {
-                                        end = Math.min(6, total - 1);
-                                    }
-
-                                    if (current >= total - 2) {
-                                        start = Math.max(2, total - 5);
-                                    }
-
-                                    // Ellipsis after page 1
-                                    if (start > 2) {
-                                        pages.push("...");
-                                    }
-
-                                    // Middle pages
-                                    for (let i = start; i <= end; i++) {
-                                        pages.push(i);
-                                    }
-
-                                    // Ellipsis before last page
-                                    if (end < total - 1) {
-                                        pages.push("...");
-                                    }
-
-                                    // Always show last page (if > 1)
-                                    if (total > 1) {
-                                        pages.push(total);
-                                    }
-
-                                    return pages.map((page, index) =>
-                                        page === "..." ? (
-                                            <span key={index} className="px-2">
-                                                ...
-                                            </span>
-                                        ) : (
-                                            <button
-                                                key={page}
-                                                onClick={() =>
-                                                    goToPage(
-                                                        `/admin/tags?page=${page}`
-                                                    )
-                                                }
-                                                className={`px-3 py-1 rounded border text-sm ${
-                                                    tags.current_page === page
-                                                        ? "bg-blue-600 text-white"
-                                                        : "hover:bg-gray-100"
-                                                }`}
-                                            >
-                                                {page}
-                                            </button>
-                                        )
-                                    );
-                                })()}
-
-                                {/* Next */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!tags.next_page_url}
-                                    onClick={() => goToPage(tags.next_page_url)}
-                                >
-                                    Next
-                                </Button>
-                            </div>
-                        </div>
+                        <SmartPagination
+                            currentPage={tags.current_page}
+                            totalPages={tags.last_page}
+                            onPageChange={() => {}}
+                            prevPageUrl={tags.prev_page_url}
+                            nextPageUrl={tags.next_page_url}
+                            onUrlChange={goToPage}
+                            buildUrl={(page) => `/admin/tags?page=${page}`}
+                        />
                         {tags && (
                             <div className="text-center mt-4 text-sm text-muted-foreground">
                                 Total: {tags.total || tags.data.length} tag(s)

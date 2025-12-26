@@ -14,13 +14,10 @@ import {
 } from "@/components/ui/table";
 import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CreateQuizDialog } from "./_components/CreateQuizDialog";
-import { ViewQuizDialog } from "./_components/ViewQuizDialog";
-import { EditQuizDialog } from "./_components/EditQuizDialog";
 import { DeleteQuizDialog } from "./_components/DeleteQuizDialog";
-import axios from "axios";
-import { toast } from "sonner";
 import { Question } from "../Questions/Index";
+import { route } from "ziggy-js";
+import { SmartPagination } from "@/components/common/SmartPagination";
 interface Subject {
     id: number;
     name: string;
@@ -90,28 +87,16 @@ export default function Index({
         return () => clearTimeout(timeout);
     }, [search]);
 
-    const [createDialogOpen, setCreateDialogOpen] = useState(false);
-    const [viewDialogOpen, setViewDialogOpen] = useState(false);
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-    const handleView = async (quiz: Quiz) => {
-        const response = await axios.get(`/admin/quizzes/${quiz.id}`);
-        setSelectedQuiz(response.data.quiz);
-        setViewDialogOpen(true);
+    const handleView = (quiz: Quiz) => {
+        router.visit(route("admin.quizzes.show", quiz.id));
     };
-    const handleEdit = async (quiz: Quiz) => {
-        try {
-            // Fetch the full quiz with questions from the backend
-            const response = await axios.get(`/admin/quizzes/${quiz.id}`);
-            setSelectedQuiz(response.data.quiz);
-            setEditDialogOpen(true);
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to fetch quiz data");
-        }
+
+    const handleEdit = (quiz: Quiz) => {
+        router.visit(route("admin.quizzes.edit", quiz.id));
     };
 
     const handleDelete = (quiz: Quiz) => {
@@ -191,7 +176,11 @@ export default function Index({
                                     </>
                                 )}
                                 <Button
-                                    onClick={() => setCreateDialogOpen(true)}
+                                    onClick={() =>
+                                        router.visit(
+                                            route("admin.quizzes.createForm")
+                                        )
+                                    }
                                 >
                                     <Plus className="mr-2 h-4 w-4" />
                                     Add Quiz
@@ -312,131 +301,23 @@ export default function Index({
                             </TableBody>
                         </Table>
 
-                        {/* Pagination */}
-                        <div className="flex justify-center mt-6">
-                            <div className="flex items-center space-x-1">
-                                {/* Prev */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!quizzes.prev_page_url}
-                                    onClick={() =>
-                                        goToPage(quizzes.prev_page_url)
-                                    }
-                                >
-                                    Prev
-                                </Button>
-
-                                {/* Page Numbers */}
-                                {(() => {
-                                    const pages = [];
-                                    const total = quizzes.last_page;
-                                    const current = quizzes.current_page;
-                                    const maxVisible = 5;
-
-                                    // Always show page 1
-                                    pages.push(1);
-
-                                    // Sliding window range
-                                    let start = Math.max(2, current - 2);
-                                    let end = Math.min(total - 1, current + 2);
-
-                                    if (current <= 3) {
-                                        end = Math.min(6, total - 1);
-                                    }
-
-                                    if (current >= total - 2) {
-                                        start = Math.max(2, total - 5);
-                                    }
-
-                                    // Ellipsis after page 1
-                                    if (start > 2) {
-                                        pages.push("...");
-                                    }
-
-                                    // Middle pages
-                                    for (let i = start; i <= end; i++) {
-                                        pages.push(i);
-                                    }
-
-                                    // Ellipsis before last page
-                                    if (end < total - 1) {
-                                        pages.push("...");
-                                    }
-
-                                    // Always show last page (if > 1)
-                                    if (total > 1) {
-                                        pages.push(total);
-                                    }
-
-                                    return pages.map((page, index) =>
-                                        page === "..." ? (
-                                            <span key={index} className="px-2">
-                                                ...
-                                            </span>
-                                        ) : (
-                                            <button
-                                                key={page}
-                                                onClick={() =>
-                                                    goToPage(
-                                                        `/admin/quizzes?page=${page}`
-                                                    )
-                                                }
-                                                className={`px-3 py-1 rounded border text-sm ${
-                                                    quizzes.current_page ===
-                                                    page
-                                                        ? "bg-blue-600 text-white"
-                                                        : "hover:bg-gray-100"
-                                                }`}
-                                            >
-                                                {page}
-                                            </button>
-                                        )
-                                    );
-                                })()}
-
-                                {/* Next */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!quizzes.next_page_url}
-                                    onClick={() =>
-                                        goToPage(quizzes.next_page_url)
-                                    }
-                                >
-                                    Next
-                                </Button>
-                            </div>
-                        </div>
+                        <SmartPagination
+                            currentPage={quizzes.current_page}
+                            totalPages={quizzes.last_page}
+                            onPageChange={() => {}}
+                            prevPageUrl={quizzes.prev_page_url}
+                            nextPageUrl={quizzes.next_page_url}
+                            onUrlChange={goToPage}
+                            buildUrl={(page) => `/admin/quizzes?page=${page}`}
+                        />
                         {quizzes && (
                             <div className="text-center mt-4 text-sm text-muted-foreground">
                                 Total: {quizzes.total || quizzes.data.length}{" "}
-                                quiz(zes)
+                                quizzes
                             </div>
                         )}
                     </CardContent>
                 </Card>
-
-                <CreateQuizDialog
-                    open={createDialogOpen}
-                    onOpenChange={setCreateDialogOpen}
-                    subjects={subjects}
-                    questions={questions}
-                />
-
-                <ViewQuizDialog
-                    open={viewDialogOpen}
-                    onOpenChange={setViewDialogOpen}
-                    quiz={selectedQuiz}
-                />
-
-                <EditQuizDialog
-                    open={editDialogOpen}
-                    onOpenChange={setEditDialogOpen}
-                    quiz={selectedQuiz}
-                    subjects={subjects}
-                    allQuestions={questions}
-                />
 
                 <DeleteQuizDialog
                     open={deleteDialogOpen}

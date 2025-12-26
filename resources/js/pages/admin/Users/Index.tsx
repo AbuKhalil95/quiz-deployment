@@ -11,16 +11,22 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Plus, Eye, Trash2 } from "lucide-react";
+import { Plus, Eye, Trash2, Pencil } from "lucide-react";
 import { CreateUserDialog } from "./_components/CreateUserDialog";
 import { ViewUserDialog } from "./_components/ViewUserDialog";
 import { DeleteUserDialog } from "./_components/DeleteUserDialog";
+import { EditUserRoleDialog } from "./_components/EditUserRoleDialog";
+import { SmartPagination } from "@/components/common/SmartPagination";
 
 interface User {
     id: number;
     name: string;
     email: string;
     roles: Array<{ id: number; name: string }>;
+}
+interface Role {
+    id: number;
+    name: string;
 }
 
 interface Props {
@@ -30,6 +36,7 @@ interface Props {
         last_page: number;
         prev_page_url: string | null;
         next_page_url: string | null;
+        roles: Role[];
     };
 }
 
@@ -62,6 +69,10 @@ export default function Index({ users, filters }: any) {
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [editRoleOpen, setEditRoleOpen] = useState(false);
+    const [selectedUserForRole, setSelectedUserForRole] = useState<User | null>(
+        null
+    );
 
     const handleView = (user: User) => {
         setSelectedUser(user);
@@ -152,6 +163,21 @@ export default function Index({ users, filters }: any) {
                                                     >
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
+
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedUserForRole(
+                                                                user
+                                                            );
+                                                            setEditRoleOpen(
+                                                                true
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
                                                     {!user.roles.some(
                                                         (role) =>
                                                             role.name ===
@@ -176,106 +202,24 @@ export default function Index({ users, filters }: any) {
                                 )}
                             </TableBody>
                         </Table>
-                        {/* Pagination */}
-                        <div className="flex justify-center mt-6">
-                            <div className="flex items-center space-x-1">
-                                {/* Prev */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!users.prev_page_url}
-                                    onClick={() =>
-                                        goToPage(users.prev_page_url)
-                                    }
-                                >
-                                    Prev
-                                </Button>
-
-                                {/* Page Numbers */}
-                                {(() => {
-                                    const pages = [];
-                                    const total = users.last_page;
-                                    const current = users.current_page;
-                                    const maxVisible = 5;
-
-                                    // Always show page 1
-                                    pages.push(1);
-
-                                    // Sliding window range
-                                    let start = Math.max(2, current - 2);
-                                    let end = Math.min(total - 1, current + 2);
-
-                                    if (current <= 3) {
-                                        end = Math.min(6, total - 1);
-                                    }
-
-                                    if (current >= total - 2) {
-                                        start = Math.max(2, total - 5);
-                                    }
-
-                                    // Ellipsis after page 1
-                                    if (start > 2) {
-                                        pages.push("...");
-                                    }
-
-                                    // Middle pages
-                                    for (let i = start; i <= end; i++) {
-                                        pages.push(i);
-                                    }
-
-                                    // Ellipsis before last page
-                                    if (end < total - 1) {
-                                        pages.push("...");
-                                    }
-
-                                    // Always show last page (if > 1)
-                                    if (total > 1) {
-                                        pages.push(total);
-                                    }
-
-                                    return pages.map((page, index) =>
-                                        page === "..." ? (
-                                            <span key={index} className="px-2">
-                                                ...
-                                            </span>
-                                        ) : (
-                                            <button
-                                                key={page}
-                                                onClick={() =>
-                                                    goToPage(
-                                                        `/admin/users?page=${page}`
-                                                    )
-                                                }
-                                                className={`px-3 py-1 rounded border text-sm ${
-                                                    users.current_page ===
-                                                    page
-                                                        ? "bg-blue-600 text-white"
-                                                        : "hover:bg-gray-100"
-                                                }`}
-                                            >
-                                                {page}
-                                            </button>
-                                        )
-                                    );
-                                })()}
-
-                                {/* Next */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!users.next_page_url}
-                                    onClick={() =>
-                                        goToPage(users.next_page_url)
-                                    }
-                                >
-                                    Next
-                                </Button>
-                            </div>
-                        </div>
+                        <SmartPagination
+                            currentPage={users.current_page}
+                            totalPages={users.last_page}
+                            onPageChange={() => {}}
+                            prevPageUrl={users.prev_page_url}
+                            nextPageUrl={users.next_page_url}
+                            onUrlChange={goToPage}
+                            buildUrl={(page) => `/admin/users?page=${page}`}
+                        />
                     </CardContent>
                 </Card>
 
                 {/* Page-specific dialogs */}
+                <EditUserRoleDialog
+                    open={editRoleOpen}
+                    onOpenChange={setEditRoleOpen}
+                    user={selectedUserForRole}
+                />
                 <CreateUserDialog
                     open={createDialogOpen}
                     onOpenChange={setCreateDialogOpen}

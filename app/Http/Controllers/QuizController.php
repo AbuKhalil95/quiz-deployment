@@ -81,16 +81,44 @@ class QuizController extends Controller
         return view('Dashboard/Quiz/quiz', compact('subjects'));
     }
 
+    public function createForm(Request $request)
+    {
+        if ($this->wantsInertiaResponse($request)) {
+            return \Inertia\Inertia::render('admin/Quizzes/Create', [
+                'subjects' => Subject::select('id', 'name')->get(),
+                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                    ->select('id', 'question_text')
+                    ->get(),
+            ]);
+        }
+
+        // Legacy fallback
+        $subjects = Subject::select('id', 'name')->get();
+
+        return view('Dashboard/Quiz/quiz', compact('subjects'));
+    }
+
     public function create(Request $request)
     {
-        $request->validate([
+        $rules = [
             'title' => 'required|string|max:255',
-            'mode' => 'required|in:by_subject,mixed_bag,timed',
+            'mode' => 'required|in:by_subject,mixed_bag',
             'subject_id' => 'nullable|exists:subjects,id',
-            'time_limit_minutes' => 'nullable|integer|min:1',
-            'total_questions' => 'nullable|integer|min:1',
+            'questions' => 'required|array|min:1',
+            'questions.*.question_id' => 'required|exists:questions,id',
+            'questions.*.order' => 'required|integer|min:1',
+        ];
 
-        ]);
+        // For mixed_bag mode, total_questions is required and must match questions count
+        if ($request->mode === 'mixed_bag') {
+            $rules['total_questions'] = 'required|integer|min:1';
+            $rules['questions'][] = 'size:'.$request->total_questions;
+        } else {
+            // For by_subject mode, total_questions is inferred from questions count
+            $rules['total_questions'] = 'nullable|integer|min:1';
+        }
+
+        $request->validate($rules);
 
         // Validate that all questions are in "done" state
         if ($request->has('questions') && is_array($request->questions)) {
@@ -107,12 +135,16 @@ class QuizController extends Controller
             }
         }
 
+        // For by_subject mode, set total_questions from questions count
+        $totalQuestions = $request->mode === 'by_subject'
+            ? count($request->questions)
+            : $request->total_questions;
+
         $quiz = Quiz::create([
             'title' => $request->title,
             'mode' => $request->mode,
             'subject_id' => $request->subject_id,
-            'time_limit_minutes' => $request->time_limit_minutes,
-            'total_questions' => $request->total_questions,
+            'total_questions' => $totalQuestions,
             'created_by' => Auth::id(),
         ]);
 
@@ -225,15 +257,30 @@ class QuizController extends Controller
         $quiz->questions = $quiz->quizQuestion;
         unset($quiz->quizQuestion);
 
+        if ($this->wantsInertiaResponse(request())) {
+            return \Inertia\Inertia::render('admin/Quizzes/Show', [
+                'quiz' => $quiz,
+            ]);
+        }
+
         return response()->json(['quiz' => $quiz]);
     }
 
     public function edit($id)
     {
-        $quiz = Quiz::find($id);
+        $quiz = Quiz::with(['subject', 'quizQuestion.question'])->findOrFail($id);
 
-        if (! $quiz) {
-            return response()->json(['error' => 'Quiz not found'], 404);
+        if ($this->wantsInertiaResponse(request())) {
+            $quiz->questions = $quiz->quizQuestion;
+            unset($quiz->quizQuestion);
+
+            return \Inertia\Inertia::render('admin/Quizzes/Edit', [
+                'quiz' => $quiz,
+                'subjects' => Subject::select('id', 'name')->get(),
+                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                    ->select('id', 'question_text')
+                    ->get(),
+            ]);
         }
 
         return response()->json($quiz);
@@ -247,19 +294,30 @@ class QuizController extends Controller
             abort(404, 'Quiz not found');
         }
 
-        $request->validate([
+        $rules = [
             'title' => 'required|string|max:255',
-            'mode' => 'required|in:by_subject,mixed_bag,timed',
+            'mode' => 'required|in:by_subject,mixed_bag',
             'subject_id' => 'nullable|exists:subjects,id',
-            'time_limit_minutes' => 'nullable|integer|min:1',
-            'total_questions' => 'nullable|integer|min:1',
-        ]);
+        ];
+
+        // For mixed_bag mode, total_questions is required
+        if ($request->mode === 'mixed_bag') {
+            $rules['total_questions'] = 'required|integer|min:1';
+        } else {
+            $rules['total_questions'] = 'nullable|integer|min:1';
+        }
+
+        $request->validate($rules);
+
+        // For by_subject mode, set total_questions from current questions count
+        $totalQuestions = $request->mode === 'by_subject'
+            ? $quiz->quizQuestion()->count()
+            : $request->total_questions;
 
         $quiz->title = $request->title;
         $quiz->mode = $request->mode;
         $quiz->subject_id = $request->subject_id;
-        $quiz->time_limit_minutes = $request->time_limit_minutes;
-        $quiz->total_questions = $request->total_questions;
+        $quiz->total_questions = $totalQuestions;
         $quiz->save();
 
         // For Inertia requests

@@ -20,6 +20,7 @@ import { CreateSubjectDialog } from "./_components/CreateSubjectDialog";
 import { ViewSubjectDialog } from "./_components/ViewSubjectDialog";
 import { EditSubjectDialog } from "./_components/EditSubjectDialog";
 import { DeleteSubjectDialog } from "./_components/DeleteSubjectDialog";
+import { SmartPagination } from "@/components/common/SmartPagination";
 
 interface Subject {
     id: number;
@@ -269,102 +270,15 @@ export default function Index({ subjects, filters }: Props) {
                                 )}
                             </TableBody>
                         </Table>
-                        {/* Pagination */}
-                        <div className="flex justify-center mt-6">
-                            <div className="flex items-center space-x-1">
-                                {/* Prev */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!subjects.prev_page_url}
-                                    onClick={() =>
-                                        goToPage(subjects.prev_page_url)
-                                    }
-                                >
-                                    Prev
-                                </Button>
-
-                                {/* Page Numbers */}
-                                {(() => {
-                                    const pages = [];
-                                    const total = subjects.last_page;
-                                    const current = subjects.current_page;
-                                    const maxVisible = 5;
-
-                                    // Always show page 1
-                                    pages.push(1);
-
-                                    // Sliding window range
-                                    let start = Math.max(2, current - 2);
-                                    let end = Math.min(total - 1, current + 2);
-
-                                    if (current <= 3) {
-                                        end = Math.min(6, total - 1);
-                                    }
-
-                                    if (current >= total - 2) {
-                                        start = Math.max(2, total - 5);
-                                    }
-
-                                    // Ellipsis after page 1
-                                    if (start > 2) {
-                                        pages.push("...");
-                                    }
-
-                                    // Middle pages
-                                    for (let i = start; i <= end; i++) {
-                                        pages.push(i);
-                                    }
-
-                                    // Ellipsis before last page
-                                    if (end < total - 1) {
-                                        pages.push("...");
-                                    }
-
-                                    // Always show last page (if > 1)
-                                    if (total > 1) {
-                                        pages.push(total);
-                                    }
-
-                                    return pages.map((page, index) =>
-                                        page === "..." ? (
-                                            <span key={index} className="px-2">
-                                                ...
-                                            </span>
-                                        ) : (
-                                            <button
-                                                key={page}
-                                                onClick={() =>
-                                                    goToPage(
-                                                        `/admin/subjects?page=${page}`
-                                                    )
-                                                }
-                                                className={`px-3 py-1 rounded border text-sm ${
-                                                    subjects.current_page ===
-                                                    page
-                                                        ? "bg-blue-600 text-white"
-                                                        : "hover:bg-gray-100"
-                                                }`}
-                                            >
-                                                {page}
-                                            </button>
-                                        )
-                                    );
-                                })()}
-
-                                {/* Next */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!subjects.next_page_url}
-                                    onClick={() =>
-                                        goToPage(subjects.next_page_url)
-                                    }
-                                >
-                                    Next
-                                </Button>
-                            </div>
-                        </div>
+                        <SmartPagination
+                            currentPage={subjects.current_page}
+                            totalPages={subjects.last_page}
+                            onPageChange={() => {}}
+                            prevPageUrl={subjects.prev_page_url}
+                            nextPageUrl={subjects.next_page_url}
+                            onUrlChange={goToPage}
+                            buildUrl={(page) => `/admin/subjects?page=${page}`}
+                        />
                         {subjects && (
                             <div className="text-center mt-4 text-sm text-muted-foreground">
                                 Total: {subjects.total || subjects.data.length}{" "}
