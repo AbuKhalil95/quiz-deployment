@@ -17,18 +17,8 @@ class QuestionController extends Controller
     public function index(Request $request)
     {
         $user = $this->user();
-        $query = Question::with(['subject', 'tags', 'options', 'assignedTo', 'creator']);
+        $query = Question::with(['subject', 'tags', 'options', 'assignedTo', 'creator.roles']);
 
-        if ($user && $user->hasRole('teacher')) {
-            $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id) // own questions
-                    ->orWhereHas('creator', function ($q2) {
-                        $q2->whereHas('roles', function ($q3) {
-                            $q3->where('name', 'admin'); // admin-created questions
-                        });
-                    });
-            });
-        }
         // All users (teachers and admins) can see all questions
         // Edit/delete permissions are handled by middleware
 
@@ -49,12 +39,12 @@ class QuestionController extends Controller
         // 'all' tab shows all questions regardless of state
 
         // Subject filter
-        if ($request->has('subject_id') && !empty($request->subject_id)) {
+        if ($request->has('subject_id') && ! empty($request->subject_id)) {
             $query->where('subject_id', $request->subject_id);
         }
 
         // Search
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('question_text', 'like', "%{$search}%")
@@ -82,7 +72,12 @@ class QuestionController extends Controller
                     'creator' => $question->creator ? [
                         'id' => $question->creator->id,
                         'name' => $question->creator->name,
-                        
+                        'roles' => $question->creator->roles->map(function ($role) {
+                            return [
+                                'id' => $role->id,
+                                'name' => $role->name,
+                            ];
+                        }),
                     ] : null,
                     'subject' => $question->subject ? [
                         'id' => $question->subject->id,
@@ -123,22 +118,22 @@ class QuestionController extends Controller
                 })
                 ->addColumn('question_text', function ($row) {
                     $text = $row->question_text;
-                    $shortText = strlen($text) > 100 ? substr($text, 0, 100) . '...' : $text;
+                    $shortText = strlen($text) > 100 ? substr($text, 0, 100).'...' : $text;
 
-                    return '<span class="short-text">' . $shortText . '</span>
-                <span class="full-text" style="display:none;">' . $text . '</span>
-                ' . (strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
+                    return '<span class="short-text">'.$shortText.'</span>
+                <span class="full-text" style="display:none;">'.$text.'</span>
+                '.(strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
                 })
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-question btn btn-primary btn-action" data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-question btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-question btn btn-danger" data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-question btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -198,7 +193,7 @@ class QuestionController extends Controller
             // Catch any other errors
             return redirect()
                 ->back()
-                ->withErrors(['file' => 'Failed to import the file: ' . $e->getMessage()]);
+                ->withErrors(['file' => 'Failed to import the file: '.$e->getMessage()]);
         }
     }
 
@@ -224,7 +219,7 @@ class QuestionController extends Controller
 
         // Ensure at least one option is marked as correct
         $hasCorrectOption = collect($request->options)->contains('is_correct', true);
-        if (!$hasCorrectOption) {
+        if (! $hasCorrectOption) {
             return back()->withErrors([
                 'options' => 'At least one option must be marked as correct.',
             ])->withInput();
@@ -234,15 +229,15 @@ class QuestionController extends Controller
         $explanations = [];
         if ($request->has('explanations')) {
             $rawExplanations = $request->explanations;
-            if (!empty($rawExplanations['correct'])) {
+            if (! empty($rawExplanations['correct'])) {
                 $explanations['correct'] = trim($rawExplanations['correct']);
             }
-            if (!empty($rawExplanations['wrong'])) {
+            if (! empty($rawExplanations['wrong'])) {
                 $explanations['wrong'] = trim($rawExplanations['wrong']);
             }
             for ($i = 1; $i <= 5; $i++) {
                 $key = "option{$i}";
-                if (!empty($rawExplanations[$key])) {
+                if (! empty($rawExplanations[$key])) {
                     $explanations[$key] = trim($rawExplanations[$key]);
                 }
             }
@@ -254,7 +249,7 @@ class QuestionController extends Controller
             'created_by' => Auth::id(),
         ];
 
-        if (!empty($explanations)) {
+        if (! empty($explanations)) {
             $questionData['explanations'] = $explanations;
         }
 
@@ -288,7 +283,7 @@ class QuestionController extends Controller
     {
         $question = Question::with(['subject', 'tags', 'options', 'assignedTo', 'creator', 'stateHistory.changedBy'])->find($id);
 
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 
@@ -386,15 +381,20 @@ class QuestionController extends Controller
 
     public function edit($id)
     {
-        $question = Question::with(['subject', 'tags', 'options'])->find($id);
         $user = $this->user();
-        // Only admin or the creator of the question can edit
-        if ($user->hasRole('teacher') && $question->created_by !== $user->id) {
-            abort(403, 'You cannot edit questions created by other teachers.');
+        $question = Question::with(['subject', 'tags', 'options'])->find($id);
+        if (! $question) {
+            abort(404, 'Question not found');
         }
 
-        if (!$question) {
-            abort(404, 'Question not found');
+        // Authorization: Can only edit if assigned to self and not done, or if admin
+        if (! $user->hasRole('admin')) {
+            $isAssignedToSelf = $question->assigned_to === $user->id;
+            $isDone = $question->state === Question::STATE_DONE;
+
+            if (! $isAssignedToSelf || $isDone) {
+                abort(403, 'You can only edit questions assigned to you that are not in done state. Please assign the question to yourself first or reset it if it is done.');
+            }
         }
 
         if ($this->wantsInertiaResponse(request())) {
@@ -430,15 +430,23 @@ class QuestionController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = $this->user();
         $question = Question::find($id);
 
-        $user = $this->user();
-        // Only admin or the creator of the question can edit
-        if ($user->hasRole('teacher') && $question->created_by !== $user->id) {
-            abort(403, 'You cannot edit questions created by other teachers.');
-        }
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
+        }
+
+        // Authorization: Can only update if assigned to self and not done, or if admin
+        if (! $user->hasRole('admin')) {
+            $isAssignedToSelf = $question->assigned_to === $user->id;
+            $isDone = $question->state === Question::STATE_DONE;
+
+            if (! $isAssignedToSelf || $isDone) {
+                return back()->withErrors([
+                    'message' => 'You can only update questions assigned to you that are not in done state. Please assign the question to yourself first or reset it if it is done.',
+                ])->withInput();
+            }
         }
 
         $request->validate([
@@ -462,7 +470,7 @@ class QuestionController extends Controller
 
         // Ensure at least one option is marked as correct
         $hasCorrectOption = collect($request->options)->contains('is_correct', true);
-        if (!$hasCorrectOption) {
+        if (! $hasCorrectOption) {
             return back()->withErrors([
                 'options' => 'At least one option must be marked as correct.',
             ])->withInput();
@@ -472,15 +480,15 @@ class QuestionController extends Controller
         $explanations = [];
         if ($request->has('explanations')) {
             $rawExplanations = $request->explanations;
-            if (!empty($rawExplanations['correct'])) {
+            if (! empty($rawExplanations['correct'])) {
                 $explanations['correct'] = trim($rawExplanations['correct']);
             }
-            if (!empty($rawExplanations['wrong'])) {
+            if (! empty($rawExplanations['wrong'])) {
                 $explanations['wrong'] = trim($rawExplanations['wrong']);
             }
             for ($i = 1; $i <= 5; $i++) {
                 $key = "option{$i}";
-                if (!empty($rawExplanations[$key])) {
+                if (! empty($rawExplanations[$key])) {
                     $explanations[$key] = trim($rawExplanations[$key]);
                 }
             }
@@ -515,14 +523,14 @@ class QuestionController extends Controller
         // Handle approval if requested
         if ($request->boolean('approve')) {
             $user = $this->user();
-            if (!$user) {
+            if (! $user) {
                 abort(401, 'Unauthenticated');
             }
 
             // Check if user can approve (must be assigned to question or be admin)
             $canApprove = $user->hasRole('admin') || $question->assigned_to === $user->id;
 
-            if (!$canApprove) {
+            if (! $canApprove) {
                 return back()->withErrors([
                     'message' => 'You do not have permission to approve this question.',
                 ])->withInput();
@@ -565,7 +573,7 @@ class QuestionController extends Controller
     {
         $question = Question::find($id);
 
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 
@@ -574,7 +582,7 @@ class QuestionController extends Controller
         // For Inertia requests
         if (request()->header('X-Inertia')) {
             return redirect()
-                ->route('admin.questions.index')
+                ->route('admin.questions.index', request()->only(['tab', 'search', 'subject_id', 'page']))
                 ->with('success', 'Question deleted successfully');
         }
 
@@ -584,21 +592,87 @@ class QuestionController extends Controller
 
     public function bulkDestroy(Request $request)
     {
+        $user = $this->user();
+
+        if (! $user) {
+            abort(401, 'Unauthenticated');
+        }
+
         $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'required|integer|exists:questions,id',
         ]);
 
         $ids = $request->ids;
+
+        // If user is not admin, filter to only allow deleting questions they created
+        if (! $user->hasRole('admin')) {
+            $questions = Question::whereIn('id', $ids)->get();
+            $unauthorizedIds = $questions
+                ->filter(function ($question) use ($user) {
+                    return $question->created_by !== $user->id;
+                })
+                ->pluck('id')
+                ->toArray();
+
+            if (! empty($unauthorizedIds)) {
+                return back()->withErrors([
+                    'message' => 'You can only delete questions you created. Some selected questions were created by others.',
+                ])->withInput();
+            }
+        }
+
         $deleted = Question::whereIn('id', $ids)->delete();
 
         if ($this->wantsInertiaResponse($request)) {
             return redirect()
-                ->route('admin.questions.index')
+                ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
                 ->with('success', "{$deleted} question(s) deleted successfully");
         }
 
         return response()->json(['success' => "{$deleted} question(s) deleted successfully"]);
+    }
+
+    /**
+     * Get all question IDs matching the current filter (for select all)
+     */
+    public function getIds(Request $request)
+    {
+        $user = $this->user();
+        $query = Question::query();
+
+        // Tab filter (state filter)
+        $tab = $request->get('tab', 'all');
+        if ($tab === 'review') {
+            $query->where('state', Question::STATE_INITIAL);
+        } elseif ($tab === 'my-review') {
+            if ($user) {
+                $query->where('assigned_to', $user->id)
+                    ->where('state', Question::STATE_UNDER_REVIEW);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        // Subject filter
+        if ($request->has('subject_id') && ! empty($request->subject_id)) {
+            $query->where('subject_id', $request->subject_id);
+        }
+
+        // Search
+        if ($request->has('search') && ! empty($request->search)) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('question_text', 'like', "%{$search}%")
+                    ->orWhereHas('subject', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $ids = $query->pluck('id')->toArray();
+
+        return response()->json(['ids' => $ids]);
     }
 
     /**
@@ -611,7 +685,7 @@ class QuestionController extends Controller
             ->where('state', Question::STATE_INITIAL);
 
         // Search
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $query->where('question_text', 'like', "%{$search}%")
                 ->orWhereHas('subject', function ($q) use ($search) {
@@ -637,7 +711,7 @@ class QuestionController extends Controller
     {
         $user = $this->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
@@ -646,7 +720,7 @@ class QuestionController extends Controller
             ->where('state', Question::STATE_UNDER_REVIEW);
 
         // Search
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $query->where('question_text', 'like', "%{$search}%")
                 ->orWhereHas('subject', function ($q) use ($search) {
@@ -672,22 +746,34 @@ class QuestionController extends Controller
     {
         $user = $this->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
-        // Only teachers can assign questions
-        if ($user->hasRole('teacher') && $question->created_by !== $user->id && !$question->creator->hasRole('admin')) {
-            return back()->withErrors(['message' => 'You cannot unassign questions created by other teachers.']);
+        // Only teachers and admins can assign questions
+        if (! $user->hasRole('teacher') && ! $user->hasRole('admin')) {
+            abort(403, 'Only teachers can assign questions for review');
         }
 
-        $question = Question::find($id);
+        $question = Question::with('creator.roles')->find($id);
 
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 
-        if (!$question->canBeAssigned()) {
+        // Authorization: Teachers can only assign questions created by admins or themselves
+        if ($user->hasRole('teacher') && ! $user->hasRole('admin')) {
+            $isOwnQuestion = $question->created_by === $user->id;
+            $isAdminCreated = $question->creator && $question->creator->hasRole('admin');
+
+            if (! $isOwnQuestion && ! $isAdminCreated) {
+                return back()->withErrors([
+                    'message' => 'You can only assign questions created by admins or your own questions.',
+                ]);
+            }
+        }
+
+        if (! $question->canBeAssigned()) {
             return back()->withErrors([
                 'message' => 'This question is already assigned or cannot be assigned.',
             ]);
@@ -696,7 +782,7 @@ class QuestionController extends Controller
         if ($question->assignTo($user->id)) {
             if ($this->wantsInertiaResponse($request)) {
                 return redirect()
-                    ->route('admin.questions.index')
+                    ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
                     ->with('success', 'Question assigned successfully');
             }
 
@@ -709,25 +795,167 @@ class QuestionController extends Controller
     }
 
     /**
+     * Bulk assign questions to current user
+     */
+    public function bulkAssign(Request $request)
+    {
+        $user = $this->user();
+
+        if (! $user) {
+            abort(401, 'Unauthenticated');
+        }
+
+        // Only teachers and admins can assign questions
+        if (! $user->hasRole('teacher') && ! $user->hasRole('admin')) {
+            abort(403, 'Only teachers can assign questions for review');
+        }
+
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'required|integer|exists:questions,id',
+        ]);
+
+        $ids = $request->ids;
+        $questions = Question::with('creator.roles')->whereIn('id', $ids)->get();
+
+        $assigned = 0;
+        $skipped = 0;
+        $unauthorized = [];
+
+        foreach ($questions as $question) {
+            // Authorization: Teachers can only assign questions created by admins or themselves
+            if ($user->hasRole('teacher') && ! $user->hasRole('admin')) {
+                $isOwnQuestion = $question->created_by === $user->id;
+                $isAdminCreated = $question->creator && $question->creator->hasRole('admin');
+
+                if (! $isOwnQuestion && ! $isAdminCreated) {
+                    $unauthorized[] = $question->id;
+
+                    continue;
+                }
+            }
+
+            // Check if question can be assigned
+            if ($question->canBeAssigned()) {
+                if ($question->assignTo($user->id)) {
+                    $assigned++;
+                } else {
+                    $skipped++;
+                }
+            } else {
+                $skipped++;
+            }
+        }
+
+        if (! empty($unauthorized)) {
+            return back()->withErrors([
+                'message' => 'You can only assign questions created by admins or your own questions. Some selected questions were created by others.',
+            ])->withInput();
+        }
+
+        $message = "{$assigned} question(s) assigned successfully";
+        if ($skipped > 0) {
+            $message .= ". {$skipped} question(s) were skipped (already assigned or cannot be assigned).";
+        }
+
+        if ($this->wantsInertiaResponse($request)) {
+            return redirect()
+                ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
+                ->with('success', $message);
+        }
+
+        return response()->json(['success' => $message]);
+    }
+
+    /**
+     * Bulk change question state (mark as done)
+     */
+    public function bulkChangeState(Request $request)
+    {
+        $user = $this->user();
+
+        if (! $user) {
+            abort(401, 'Unauthenticated');
+        }
+
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'required|integer|exists:questions,id',
+            'state' => 'required|in:'.Question::STATE_UNDER_REVIEW.','.Question::STATE_DONE,
+        ]);
+
+        $ids = $request->ids;
+        $newState = $request->state;
+        $questions = Question::whereIn('id', $ids)->get();
+
+        $changed = 0;
+        $skipped = 0;
+        $unauthorized = [];
+
+        foreach ($questions as $question) {
+            // Check if user can change state of this question
+            if (! $user->hasRole('admin')) {
+                if ($question->assigned_to !== $user->id) {
+                    $unauthorized[] = $question->id;
+
+                    continue;
+                }
+            }
+
+            // Validate state transition (only allow marking as done if in under-review)
+            if ($newState === Question::STATE_DONE && $question->state !== Question::STATE_UNDER_REVIEW) {
+                $skipped++;
+
+                continue;
+            }
+
+            if ($question->changeState($newState, 'Bulk state change')) {
+                $changed++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        if (! empty($unauthorized)) {
+            return back()->withErrors([
+                'message' => 'You can only change state of questions assigned to you. Some selected questions are not assigned to you.',
+            ])->withInput();
+        }
+
+        $message = "{$changed} question(s) marked as done successfully";
+        if ($skipped > 0) {
+            $message .= ". {$skipped} question(s) were skipped (not in under-review state or cannot be changed).";
+        }
+
+        if ($this->wantsInertiaResponse($request)) {
+            return redirect()
+                ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
+                ->with('success', $message);
+        }
+
+        return response()->json(['success' => $message]);
+    }
+
+    /**
      * Unassign question (self or admin)
      */
     public function unassign(Request $request, $id)
     {
         $user = $this->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
         $question = Question::find($id);
 
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 
         $isAdmin = $user->hasRole('admin');
 
-        if (!$question->canBeUnassigned($user->id, $isAdmin)) {
+        if (! $question->canBeUnassigned($user->id, $isAdmin)) {
             return back()->withErrors([
                 'message' => 'You cannot unassign this question.',
             ]);
@@ -736,7 +964,7 @@ class QuestionController extends Controller
         if ($question->unassign($user->id)) {
             if ($this->wantsInertiaResponse($request)) {
                 return redirect()
-                    ->route('admin.questions.index')
+                    ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
                     ->with('success', 'Question unassigned successfully');
             }
 
@@ -755,23 +983,23 @@ class QuestionController extends Controller
     {
         $user = $this->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
         $request->validate([
-            'state' => 'required|in:' . Question::STATE_UNDER_REVIEW . ',' . Question::STATE_DONE,
+            'state' => 'required|in:'.Question::STATE_UNDER_REVIEW.','.Question::STATE_DONE,
             'notes' => 'nullable|string|max:1000',
         ]);
 
         $question = Question::find($id);
 
-        if (!$question) {
+        if (! $question) {
             abort(404, 'Question not found');
         }
 
         // Check if user is assigned to this question or is admin
-        if (!$user->hasRole('admin')) {
+        if (! $user->hasRole('admin')) {
             if ($question->assigned_to !== $user->id) {
                 abort(403, 'You can only change state of questions assigned to you');
             }
@@ -787,7 +1015,7 @@ class QuestionController extends Controller
         if ($question->changeState($request->state, $request->notes ?? null)) {
             if ($this->wantsInertiaResponse($request)) {
                 return redirect()
-                    ->route('admin.questions.index')
+                    ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
                     ->with('success', 'Question state updated successfully');
             }
 
@@ -796,6 +1024,67 @@ class QuestionController extends Controller
 
         return back()->withErrors([
             'message' => 'Failed to update question state.',
+        ]);
+    }
+
+    /**
+     * Reset done question back to initial state (for editing)
+     * Auto-assigns to current user if not already assigned
+     */
+    public function resetToInitial(Request $request, $id)
+    {
+        $user = $this->user();
+
+        if (! $user) {
+            abort(401, 'Unauthenticated');
+        }
+
+        $question = Question::with('creator.roles')->find($id);
+
+        if (! $question) {
+            abort(404, 'Question not found');
+        }
+
+        // Authorization: Only allow reset if:
+        // - User is admin, OR
+        // - Question is assigned to user, OR
+        // - Question is not assigned and user can assign it (admin-created or own question)
+        if (! $user->hasRole('admin')) {
+            $isAssignedToSelf = $question->assigned_to === $user->id;
+            $isUnassigned = ! $question->assigned_to;
+
+            if ($isUnassigned) {
+                // Check if user can assign this question
+                $isOwnQuestion = $question->created_by === $user->id;
+                $isAdminCreated = $question->creator && $question->creator->hasRole('admin');
+
+                if (! $isOwnQuestion && ! $isAdminCreated) {
+                    abort(403, 'You can only reset questions created by admins or your own questions.');
+                }
+            } elseif (! $isAssignedToSelf) {
+                abort(403, 'You can only reset questions assigned to you');
+            }
+        }
+
+        // Reset and auto-assign if not already assigned (always assign to enable editing)
+        $assignToUserId = ! $question->assigned_to ? $user->id : null;
+
+        if ($question->resetToInitial($user->id, $assignToUserId)) {
+            if ($this->wantsInertiaResponse($request)) {
+                $message = $assignToUserId
+                    ? 'Question reset to initial state and assigned to you successfully'
+                    : 'Question reset to initial state successfully';
+
+                return redirect()
+                    ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
+                    ->with('success', $message);
+            }
+
+            return response()->json(['success' => 'Question reset to initial state successfully']);
+        }
+
+        return back()->withErrors([
+            'message' => 'Failed to reset question. Question must be in done state.',
         ]);
     }
 }

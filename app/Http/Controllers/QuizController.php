@@ -17,11 +17,11 @@ class QuizController extends Controller
         $query = Quiz::with('subject');
 
         // Teachers can only see their own quizzes
-        if ($user && $user->hasRole('teacher') && !$user->hasRole('admin')) {
+        if ($user && $user->hasRole('teacher') && ! $user->hasRole('admin')) {
             $query->where('created_by', $user->id);
         }
 
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $query->where('title', 'like', "%{$search}%");
         }
@@ -60,13 +60,13 @@ class QuizController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                        <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" title="View">View</a>
+                        <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" title="View">View</a>
 
-                        <a href="javascript:void(0)" class="btn btn-primary edit-quiz" data-id="' . $row->id . '" title="Edit">
+                        <a href="javascript:void(0)" class="btn btn-primary edit-quiz" data-id="'.$row->id.'" title="Edit">
                             <i class="fas fa-pencil-alt"></i>
                         </a>
 
-                        <a href="javascript:void(0)" class="btn btn-danger delete-quiz" data-id="' . $row->id . '" title="Delete">
+                        <a href="javascript:void(0)" class="btn btn-danger delete-quiz" data-id="'.$row->id.'" title="Delete">
                             <i class="fas fa-trash"></i>
                         </a>
                     </div>';
@@ -81,23 +81,44 @@ class QuizController extends Controller
         return view('Dashboard/Quiz/quiz', compact('subjects'));
     }
 
+    public function createForm(Request $request)
+    {
+        if ($this->wantsInertiaResponse($request)) {
+            return \Inertia\Inertia::render('admin/Quizzes/Create', [
+                'subjects' => Subject::select('id', 'name')->get(),
+                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                    ->select('id', 'question_text')
+                    ->get(),
+            ]);
+        }
+
+        // Legacy fallback
+        $subjects = Subject::select('id', 'name')->get();
+
+        return view('Dashboard/Quiz/quiz', compact('subjects'));
+    }
 
     public function create(Request $request)
     {
-        $request->validate([
+        $rules = [
             'title' => 'required|string|max:255',
-            'mode' => 'required|in:by_subject,mixed_bag,timed',
+            'mode' => 'required|in:by_subject,mixed_bag',
             'subject_id' => 'nullable|exists:subjects,id',
-            'time_limit_minutes' => 'nullable|integer|min:1',
-            'total_questions' => 'nullable|integer|min:1',
-            'questions' => [
-                'required',
-                'array',
-                'size:' . $request->total_questions,
-            ],
+            'questions' => 'required|array|min:1',
             'questions.*.question_id' => 'required|exists:questions,id',
             'questions.*.order' => 'required|integer|min:1',
-        ]);
+        ];
+
+        // For mixed_bag mode, total_questions is required and must match questions count
+        if ($request->mode === 'mixed_bag') {
+            $rules['total_questions'] = 'required|integer|min:1';
+            $rules['questions'][] = 'size:'.$request->total_questions;
+        } else {
+            // For by_subject mode, total_questions is inferred from questions count
+            $rules['total_questions'] = 'nullable|integer|min:1';
+        }
+
+        $request->validate($rules);
 
         // Validate that all questions are in "done" state
         if ($request->has('questions') && is_array($request->questions)) {
@@ -107,19 +128,23 @@ class QuizController extends Controller
                 ->pluck('id')
                 ->toArray();
 
-            if (!empty($nonDoneQuestions)) {
+            if (! empty($nonDoneQuestions)) {
                 return back()->withErrors([
                     'questions' => 'Only questions that are marked as done can be added to quizzes.',
                 ])->withInput();
             }
         }
 
+        // For by_subject mode, set total_questions from questions count
+        $totalQuestions = $request->mode === 'by_subject'
+            ? count($request->questions)
+            : $request->total_questions;
+
         $quiz = Quiz::create([
             'title' => $request->title,
             'mode' => $request->mode,
             'subject_id' => $request->subject_id,
-            'time_limit_minutes' => $request->time_limit_minutes,
-            'total_questions' => $request->total_questions,
+            'total_questions' => $totalQuestions,
             'created_by' => Auth::id(),
         ]);
 
@@ -216,7 +241,7 @@ class QuizController extends Controller
             ->where('id', $questionId)
             ->first();
 
-        if (!$quizQuestion) {
+        if (! $quizQuestion) {
             return response()->json(['error' => 'Question not found'], 404);
         }
 
@@ -232,15 +257,30 @@ class QuizController extends Controller
         $quiz->questions = $quiz->quizQuestion;
         unset($quiz->quizQuestion);
 
+        if ($this->wantsInertiaResponse(request())) {
+            return \Inertia\Inertia::render('admin/Quizzes/Show', [
+                'quiz' => $quiz,
+            ]);
+        }
+
         return response()->json(['quiz' => $quiz]);
     }
 
     public function edit($id)
     {
-        $quiz = Quiz::find($id);
+        $quiz = Quiz::with(['subject', 'quizQuestion.question'])->findOrFail($id);
 
-        if (!$quiz) {
-            return response()->json(['error' => 'Quiz not found'], 404);
+        if ($this->wantsInertiaResponse(request())) {
+            $quiz->questions = $quiz->quizQuestion;
+            unset($quiz->quizQuestion);
+
+            return \Inertia\Inertia::render('admin/Quizzes/Edit', [
+                'quiz' => $quiz,
+                'subjects' => Subject::select('id', 'name')->get(),
+                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                    ->select('id', 'question_text')
+                    ->get(),
+            ]);
         }
 
         return response()->json($quiz);
@@ -250,23 +290,34 @@ class QuizController extends Controller
     {
         $quiz = Quiz::find($id);
 
-        if (!$quiz) {
+        if (! $quiz) {
             abort(404, 'Quiz not found');
         }
 
-        $request->validate([
+        $rules = [
             'title' => 'required|string|max:255',
-            'mode' => 'required|in:by_subject,mixed_bag,timed',
+            'mode' => 'required|in:by_subject,mixed_bag',
             'subject_id' => 'nullable|exists:subjects,id',
-            'time_limit_minutes' => 'nullable|integer|min:1',
-            'total_questions' => 'nullable|integer|min:1',
-        ]);
+        ];
+
+        // For mixed_bag mode, total_questions is required
+        if ($request->mode === 'mixed_bag') {
+            $rules['total_questions'] = 'required|integer|min:1';
+        } else {
+            $rules['total_questions'] = 'nullable|integer|min:1';
+        }
+
+        $request->validate($rules);
+
+        // For by_subject mode, set total_questions from current questions count
+        $totalQuestions = $request->mode === 'by_subject'
+            ? $quiz->quizQuestion()->count()
+            : $request->total_questions;
 
         $quiz->title = $request->title;
         $quiz->mode = $request->mode;
         $quiz->subject_id = $request->subject_id;
-        $quiz->time_limit_minutes = $request->time_limit_minutes;
-        $quiz->total_questions = $request->total_questions;
+        $quiz->total_questions = $totalQuestions;
         $quiz->save();
 
         // For Inertia requests
@@ -284,7 +335,7 @@ class QuizController extends Controller
     {
         $quiz = Quiz::find($id);
 
-        if (!$quiz) {
+        if (! $quiz) {
             abort(404, 'Quiz not found');
         }
 

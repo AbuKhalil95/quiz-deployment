@@ -34,10 +34,12 @@ export function DeleteQuestionDialog({
 
         router.delete(route("admin.questions.destroy", question.id), {
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => {
                 onOpenChange(false);
                 onSuccess?.();
                 toast.success("Question deleted successfully");
+                // Call parent's onSuccess handler which will reload with proper URL
             },
             onError: (errors) => {
                 const errorMessage =
@@ -85,4 +87,3 @@ export function DeleteQuestionDialog({
         </Dialog>
     );
 }
-

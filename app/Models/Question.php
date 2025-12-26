@@ -65,11 +65,11 @@ class Question extends Model
     }
 
     /**
-     * Check if question can be assigned (must be in initial state)
+     * Check if question can be assigned (must be in initial state and not already assigned)
      */
     public function canBeAssigned(): bool
     {
-        return $this->state === self::STATE_INITIAL;
+        return $this->state === self::STATE_INITIAL && ! $this->assigned_to;
     }
 
     /**
@@ -146,6 +146,34 @@ class Question extends Model
 
         // Log state change
         $this->logStateChange($fromState, $newState, Auth::id(), $notes);
+
+        return true;
+    }
+
+    /**
+     * Reset done question back to under-review state (assigns to user if not already assigned)
+     * Always sets to under-review and auto-assigns if not already assigned
+     */
+    public function resetToInitial(int $changedBy, ?int $assignToUserId = null, ?string $notes = null): bool
+    {
+        if ($this->state !== self::STATE_DONE) {
+            return false;
+        }
+
+        $fromState = $this->state;
+
+        // Always set to under-review
+        $this->state = self::STATE_UNDER_REVIEW;
+
+        // If not assigned and assignToUserId is provided, assign it
+        if (! $this->assigned_to && $assignToUserId) {
+            $this->assigned_to = $assignToUserId;
+        }
+
+        $this->save();
+
+        // Log state change
+        $this->logStateChange($fromState, self::STATE_UNDER_REVIEW, $changedBy, $notes ?? 'Reset to under-review for editing');
 
         return true;
     }

@@ -24,9 +24,11 @@ import {
     Clock,
     X,
     UserMinus,
+    UserPlus,
     FileUp,
 } from "lucide-react";
 import { DeleteQuestionDialog } from "./_components/DeleteQuestionDialog";
+import { SmartPagination } from "@/components/common/SmartPagination";
 import { ImportQuestionsDialog } from "./_components/ImportQuestionsDialog";
 interface Subject {
     id: number;
@@ -73,7 +75,10 @@ export interface Question {
     creator?: {
         id: number;
         name: string;
-        roles: string;
+        roles: {
+            id: number;
+            name: string;
+        }[];
     };
     subject?: Subject;
     tags?: Tag[];
@@ -111,6 +116,20 @@ export default function Index({ questions, subjects, filters }: Props) {
     );
     const [isMounted, setIsMounted] = useState(false);
 
+    const getCurrentUrl = () => {
+        const params = new URLSearchParams(window.location.search);
+        // Always preserve page parameter if we're not on page 1
+        // If page is in URL, keep it; if not but we're on page > 1, add it
+        if (questions.current_page > 1) {
+            params.set("page", questions.current_page.toString());
+        } else if (params.has("page") && params.get("page") === "1") {
+            // Remove page=1 to keep URL clean
+            params.delete("page");
+        }
+        const queryString = params.toString();
+        return `/admin/questions${queryString ? `?${queryString}` : ""}`;
+    };
+
     const updateFilters = (updates: {
         tab?: string;
         search?: string;
@@ -141,6 +160,13 @@ export default function Index({ questions, subjects, filters }: Props) {
             replace: true,
         });
     };
+
+    // Reset select all mode when filters change
+    useEffect(() => {
+        setSelectAllMode(false);
+        setSelectedIds(new Set());
+        setAllFilteredIds([]);
+    }, [activeTab, search, selectedSubjectId]);
 
     useEffect(() => {
         if (!isMounted) {
@@ -176,6 +202,8 @@ export default function Index({ questions, subjects, filters }: Props) {
     );
     const [importDialogOpen, setImportDialogOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [selectAllMode, setSelectAllMode] = useState(false);
+    const [allFilteredIds, setAllFilteredIds] = useState<number[]>([]);
 
     const handleView = (question: Question) => {
         router.visit(`/admin/questions/${question.id}`);
@@ -188,6 +216,19 @@ export default function Index({ questions, subjects, filters }: Props) {
     const handleDelete = (question: Question) => {
         setSelectedQuestion(question);
         setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteSuccess = () => {
+        // Preserve current URL with filters and page to maintain scroll and state
+        router.get(
+            getCurrentUrl(),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ["questions"],
+            }
+        );
     };
 
     const goToPage = (url: string | null) => {
@@ -211,31 +252,51 @@ export default function Index({ questions, subjects, filters }: Props) {
     };
 
     const handleAssign = (questionId: number) => {
-        router.post(
-            `/admin/questions/${questionId}/assign`,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    router.reload({ only: ["questions"] });
-                },
-            }
-        );
+        // Build query parameters to preserve current page and filters
+        const params: any = {};
+        if (activeTab && activeTab !== "all") {
+            params.tab = activeTab;
+        }
+        if (search) {
+            params.search = search;
+        }
+        if (selectedSubjectId) {
+            params.subject_id = selectedSubjectId;
+        }
+        if (questions.current_page > 1) {
+            params.page = questions.current_page;
+        }
+
+        router.post(`/admin/questions/${questionId}/assign`, params, {
+            preserveScroll: true,
+            preserveState: true,
+            // Backend will use these params in the redirect
+        });
     };
 
     const handleChangeState = (questionId: number, newState: string) => {
-        router.post(
-            `/admin/questions/${questionId}/change-state`,
-            {
-                state: newState,
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    router.reload({ only: ["questions"] });
-                },
-            }
-        );
+        // Build query parameters to preserve current page and filters
+        const params: any = {
+            state: newState,
+        };
+        if (activeTab && activeTab !== "all") {
+            params.tab = activeTab;
+        }
+        if (search) {
+            params.search = search;
+        }
+        if (selectedSubjectId) {
+            params.subject_id = selectedSubjectId;
+        }
+        if (questions.current_page > 1) {
+            params.page = questions.current_page;
+        }
+
+        router.post(`/admin/questions/${questionId}/change-state`, params, {
+            preserveScroll: true,
+            preserveState: true,
+            // Backend will use these params in the redirect
+        });
     };
 
     const toggleSelect = (id: number) => {
@@ -251,43 +312,198 @@ export default function Index({ questions, subjects, filters }: Props) {
     };
 
     const toggleSelectAll = () => {
-        if (selectedIds.size === questions.data.length) {
+        if (selectedIds.size === questions.data.length && !selectAllMode) {
             setSelectedIds(new Set());
+            setSelectAllMode(false);
         } else {
             setSelectedIds(new Set(questions.data.map((q: Question) => q.id)));
+            setSelectAllMode(false);
+        }
+    };
+
+    const handleSelectAllFiltered = async () => {
+        if (selectAllMode) {
+            // Deselect all
+            setSelectedIds(new Set());
+            setSelectAllMode(false);
+            setAllFilteredIds([]);
+        } else {
+            // Fetch all IDs matching current filter
+            const params = new URLSearchParams();
+            if (activeTab && activeTab !== "all") {
+                params.append("tab", activeTab);
+            }
+            if (search) {
+                params.append("search", search);
+            }
+            if (selectedSubjectId) {
+                params.append("subject_id", selectedSubjectId.toString());
+            }
+
+            try {
+                const response = await fetch(
+                    `/admin/questions/ids?${params.toString()}`
+                );
+                const data = await response.json();
+                setAllFilteredIds(data.ids || []);
+                setSelectedIds(new Set(data.ids || []));
+                setSelectAllMode(true);
+            } catch (error) {
+                console.error("Failed to fetch all question IDs:", error);
+            }
         }
     };
 
     const handleBulkDelete = () => {
         if (selectedIds.size === 0) return;
 
+        const idsToDelete = selectAllMode
+            ? allFilteredIds
+            : Array.from(selectedIds);
+
         if (
             confirm(
-                `Are you sure you want to delete ${selectedIds.size} question(s)?`
+                `Are you sure you want to delete ${idsToDelete.length} question(s)?`
             )
         ) {
             router.delete("/admin/questions/bulk", {
-                data: { ids: Array.from(selectedIds) },
+                data: { ids: idsToDelete },
                 preserveScroll: true,
+                preserveState: true,
                 onSuccess: () => {
                     setSelectedIds(new Set());
-                    router.reload({ only: ["questions"] });
+                    setSelectAllMode(false);
+                    setAllFilteredIds([]);
+                    // Preserve current URL with filters to maintain scroll and state
+                    router.get(
+                        window.location.pathname + window.location.search,
+                        {},
+                        {
+                            preserveScroll: true,
+                            preserveState: true,
+                            only: ["questions"],
+                        }
+                    );
                 },
             });
         }
     };
 
+    const handleBulkAssign = () => {
+        if (selectedIds.size === 0) return;
+
+        const idsToAssign = selectAllMode
+            ? allFilteredIds
+            : Array.from(selectedIds);
+
+        // Build query parameters to preserve current page and filters
+        const params: any = {
+            ids: idsToAssign,
+        };
+        if (activeTab && activeTab !== "all") {
+            params.tab = activeTab;
+        }
+        if (search) {
+            params.search = search;
+        }
+        if (selectedSubjectId) {
+            params.subject_id = selectedSubjectId;
+        }
+        if (questions.current_page > 1) {
+            params.page = questions.current_page;
+        }
+
+        router.post("/admin/questions/bulk/assign", params, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                setSelectedIds(new Set());
+                setSelectAllMode(false);
+                setAllFilteredIds([]);
+            },
+        });
+    };
+
+    const handleBulkMarkAsDone = () => {
+        if (selectedIds.size === 0) return;
+
+        const idsToChange = selectAllMode
+            ? allFilteredIds
+            : Array.from(selectedIds);
+
+        // Build query parameters to preserve current page and filters
+        const params: any = {
+            ids: idsToChange,
+            state: "done",
+        };
+        if (activeTab && activeTab !== "all") {
+            params.tab = activeTab;
+        }
+        if (search) {
+            params.search = search;
+        }
+        if (selectedSubjectId) {
+            params.subject_id = selectedSubjectId;
+        }
+        if (questions.current_page > 1) {
+            params.page = questions.current_page;
+        }
+
+        router.post("/admin/questions/bulk/change-state", params, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                setSelectedIds(new Set());
+                setSelectAllMode(false);
+                setAllFilteredIds([]);
+            },
+        });
+    };
+
     const handleUnassign = (questionId: number) => {
-        router.post(
-            `/admin/questions/${questionId}/unassign`,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    router.reload({ only: ["questions"] });
-                },
-            }
-        );
+        // Build query parameters to preserve current page and filters
+        const params: any = {};
+        if (activeTab && activeTab !== "all") {
+            params.tab = activeTab;
+        }
+        if (search) {
+            params.search = search;
+        }
+        if (selectedSubjectId) {
+            params.subject_id = selectedSubjectId;
+        }
+        if (questions.current_page > 1) {
+            params.page = questions.current_page;
+        }
+
+        router.post(`/admin/questions/${questionId}/unassign`, params, {
+            preserveScroll: true,
+            preserveState: true,
+            // Backend will use these params in the redirect
+        });
+    };
+
+    const handleResetToInitial = (questionId: number) => {
+        // Build query parameters to preserve current page and filters
+        const params: any = {};
+        if (activeTab && activeTab !== "all") {
+            params.tab = activeTab;
+        }
+        if (search) {
+            params.search = search;
+        }
+        if (selectedSubjectId) {
+            params.subject_id = selectedSubjectId;
+        }
+        if (questions.current_page > 1) {
+            params.page = questions.current_page;
+        }
+
+        router.post(`/admin/questions/${questionId}/reset-to-initial`, params, {
+            preserveScroll: true,
+            preserveState: true,
+            // Backend will use these params in the redirect
+        });
     };
 
     const renderQuestionsTable = (questionsData: any) => {
@@ -368,75 +584,7 @@ export default function Index({ questions, subjects, filters }: Props) {
                 )}
                 <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                        {activeTab === "review" &&
-                            question.state === "initial" && (
-                                <>
-                                    {question.creator?.id ===
-                                        currentUser?.id && (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleEdit(question)}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                    {/* Assign button: only if initial state and either admin-created or teacher’s own */}
-                                    {question.state === "initial" &&
-                                        ((question.creator?.roles?.some(
-                                            (r) => r.name === "admin"
-                                        ) &&
-                                            currentUser?.roles?.includes(
-                                                "teacher"
-                                            )) ||
-                                            question.creator?.id ===
-                                                currentUser?.id) && (
-                                            <Button
-                                                variant="default"
-                                                size="sm"
-                                                onClick={() =>
-                                                    handleAssign(question.id)
-                                                }
-                                            >
-                                                Assign to Me
-                                            </Button>
-                                        )}
-                                </>
-                            )}
-                        {activeTab === "my-review" &&
-                            question.state === "under-review" && (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleEdit(question)}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() =>
-                                            handleUnassign(question.id)
-                                        }
-                                    >
-                                        <UserMinus className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={() =>
-                                            handleChangeState(
-                                                question.id,
-                                                "done"
-                                            )
-                                        }
-                                    >
-                                        <CheckCircle className="h-4 w-4 mr-1" />
-                                        Mark as Done
-                                    </Button>
-                                </>
-                            )}
+                        {/* Always show View button */}
                         <Button
                             variant="outline"
                             size="sm"
@@ -444,57 +592,103 @@ export default function Index({ questions, subjects, filters }: Props) {
                         >
                             <Eye className="h-4 w-4" />
                         </Button>
-                        {activeTab === "all" && (
-                            <>
-                                {/* Edit button: admin-created questions are editable by teachers; teacher-created only editable by creator */}
-                                {(currentUser?.roles?.includes("admin") ||
-                                    (question.creator?.roles?.some(
+
+                        {/* Assign to Self button: Show first if question is not assigned to self and can be assigned */}
+                        {question.assigned_to !== currentUser?.id &&
+                            question.state === "initial" &&
+                            ((question.creator?.roles?.some(
+                                (r) => r.name === "admin"
+                            ) &&
+                                currentUser?.roles?.includes("teacher")) ||
+                                question.creator?.id === currentUser?.id ||
+                                currentUser?.roles?.includes("admin")) && (
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => handleAssign(question.id)}
+                                >
+                                    Assign to Me
+                                </Button>
+                            )}
+
+                        {/* Edit button: Only show when assigned to self and not done (includes initial state after reset) */}
+                        {question.assigned_to === currentUser?.id &&
+                            question.state !== "done" && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEdit(question)}
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                            )}
+
+                        {/* Reset to Initial button: Show when done and (assigned to self OR can be assigned) */}
+                        {question.state === "done" &&
+                            (question.assigned_to === currentUser?.id ||
+                                (question.assigned_to !== currentUser?.id &&
+                                    ((question.creator?.roles?.some(
                                         (r) => r.name === "admin"
                                     ) &&
                                         currentUser?.roles?.includes(
                                             "teacher"
                                         )) ||
-                                    (question.creator?.id === currentUser?.id &&
-                                        !question.assigned_to)) && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleEdit(question)}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                )}
-                                {/* Show unassign button if:
-                                    - Question is under-review AND
-                                    - (User is assigned to it OR user is admin) */}
-                                {question.state === "under-review" &&
-                                    (question.assigned_to === currentUser?.id ||
+                                        question.creator?.id ===
+                                            currentUser?.id ||
                                         currentUser?.roles?.includes(
                                             "admin"
-                                        )) && (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                handleUnassign(question.id)
-                                            }
-                                        >
-                                            <UserMinus className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                {/* Show delete button only if user created it or is admin */}
-                                {(currentUser?.roles?.includes("admin") ||
-                                    question.creator?.id ===
-                                        currentUser?.id) && (
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => handleDelete(question)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                )}
-                            </>
+                                        )))) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        handleResetToInitial(question.id)
+                                    }
+                                >
+                                    <Clock className="h-4 w-4 mr-1" />
+                                    {question.assigned_to === currentUser?.id
+                                        ? "Review Again"
+                                        : "Reset & Assign to Me"}
+                                </Button>
+                            )}
+
+                        {/* Mark as Done button: Show when assigned to self and under-review */}
+                        {question.assigned_to === currentUser?.id &&
+                            question.state === "under-review" && (
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() =>
+                                        handleChangeState(question.id, "done")
+                                    }
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Mark as Done
+                                </Button>
+                            )}
+
+                        {/* Unassign button: Show when assigned to self and under-review */}
+                        {question.assigned_to === currentUser?.id &&
+                            question.state === "under-review" && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleUnassign(question.id)}
+                                >
+                                    <UserMinus className="h-4 w-4" />
+                                </Button>
+                            )}
+
+                        {/* Delete button: Show if user created it or is admin */}
+                        {(currentUser?.roles?.includes("admin") ||
+                            question.creator?.id === currentUser?.id) && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDelete(question)}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
                         )}
                     </div>
                 </TableCell>
@@ -513,23 +707,55 @@ export default function Index({ questions, subjects, filters }: Props) {
             <div className="p-6">
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
                             <CardTitle>Questions</CardTitle>
-                            <div className="flex items-center gap-4">
-                                {selectedIds.size > 0 && (
-                                    <>
-                                        <span className="text-sm text-muted-foreground">
-                                            {selectedIds.size} selected
-                                        </span>
-                                        <Button
-                                            variant="destructive"
-                                            onClick={handleBulkDelete}
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-1" />
-                                            Delete Selected
-                                        </Button>
-                                    </>
-                                )}
+                            <div className="flex items-center gap-4 flex-wrap">
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    {selectedIds.size > 0 && (
+                                        <>
+                                            <span className="text-sm text-muted-foreground">
+                                                {selectAllMode
+                                                    ? `All ${selectedIds.size} selected`
+                                                    : `${selectedIds.size} selected`}
+                                            </span>
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleBulkAssign}
+                                            >
+                                                <UserPlus className="h-4 w-4 mr-1" />
+                                                Assign to Me
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleBulkMarkAsDone}
+                                            >
+                                                <CheckCircle className="h-4 w-4 mr-1" />
+                                                Mark as Done
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                onClick={handleBulkDelete}
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-1" />
+                                                Delete Selected
+                                            </Button>
+                                        </>
+                                    )}
+                                    {questions.total !== undefined &&
+                                        questions.total > 0 && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={
+                                                    handleSelectAllFiltered
+                                                }
+                                            >
+                                                {selectAllMode
+                                                    ? `Deselect All (${questions.total})`
+                                                    : `Select All (${questions.total})`}
+                                            </Button>
+                                        )}
+                                </div>
                                 <Button
                                     onClick={() =>
                                         router.visit("/admin/questions/create")
@@ -549,523 +775,407 @@ export default function Index({ questions, subjects, filters }: Props) {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <Tabs value={activeTab} onValueChange={handleTabChange}>
-                            <p className="text-sm mb-2 text-slate-500">Set the questions and complete that before adding a new quiz</p>
-                            <TabsList className="mb-4">
-                                <TabsTrigger value="all">
-                                    All Questions
-                                </TabsTrigger>
-                                <TabsTrigger value="review">
-                                    Available for Review
-                                </TabsTrigger>
-                                <TabsTrigger value="my-review">
-                                    <Clock className="h-4 w-4 mr-1" />
-                                    My Reviews
-                                </TabsTrigger>
-                            </TabsList>
-                            {/* Filters */}
-                            <div className="mb-4 space-y-3">
-                                {/* Search */}
-                                <div className="flex w-[220px] gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Search questions..."
-                                        value={search}
-                                        onChange={(e) =>
-                                            setSearch(e.target.value)
-                                        }
-                                        className="border px-2 py-1 rounded w-full"
-                                    />
-                                </div>
+                        <div className="overflow-x-auto md:overflow-x-visible">
+                            <Tabs
+                                value={activeTab}
+                                onValueChange={handleTabChange}
+                            >
+                                <p className="text-sm mb-2 text-slate-500">
+                                    Set the questions and complete that before
+                                    adding a new quiz
+                                </p>
+                                <TabsList className="mb-4">
+                                    <TabsTrigger value="all">
+                                        All Questions
+                                    </TabsTrigger>
+                                    <TabsTrigger value="review">
+                                        Available for Review
+                                    </TabsTrigger>
+                                    <TabsTrigger value="my-review">
+                                        <Clock className="h-4 w-4 mr-1" />
+                                        My Reviews
+                                    </TabsTrigger>
+                                </TabsList>
+                                {/* Filters */}
+                                <div className="mb-4 space-y-3">
+                                    {/* Search */}
+                                    <div className="flex w-[220px] gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Search questions..."
+                                            value={search}
+                                            onChange={(e) =>
+                                                setSearch(e.target.value)
+                                            }
+                                            className="border px-2 py-1 rounded w-full"
+                                        />
+                                    </div>
 
-                                {/* Subject Filter Chips */}
-                                <div className="flex flex-wrap gap-2">
-                                    <Badge
-                                        variant={
-                                            selectedSubjectId === null
-                                                ? "default"
-                                                : "outline"
-                                        }
-                                        className="cursor-pointer"
-                                        onClick={() =>
-                                            handleSubjectFilter(null)
-                                        }
-                                    >
-                                        All Subjects
-                                    </Badge>
-                                    {subjects.map((subject) => (
+                                    {/* Subject Filter Chips */}
+                                    <div className="flex flex-wrap gap-2">
                                         <Badge
-                                            key={subject.id}
                                             variant={
-                                                selectedSubjectId === subject.id
+                                                selectedSubjectId === null
                                                     ? "default"
                                                     : "outline"
                                             }
                                             className="cursor-pointer"
                                             onClick={() =>
-                                                handleSubjectFilter(subject.id)
+                                                handleSubjectFilter(null)
                                             }
                                         >
-                                            {subject.name}
-                                            {selectedSubjectId ===
-                                                subject.id && (
-                                                <X className="h-3 w-3 ml-1" />
-                                            )}
+                                            All Subjects
                                         </Badge>
-                                    ))}
+                                        {subjects.map((subject) => (
+                                            <Badge
+                                                key={subject.id}
+                                                variant={
+                                                    selectedSubjectId ===
+                                                    subject.id
+                                                        ? "default"
+                                                        : "outline"
+                                                }
+                                                className="cursor-pointer"
+                                                onClick={() =>
+                                                    handleSubjectFilter(
+                                                        subject.id
+                                                    )
+                                                }
+                                            >
+                                                {subject.name}
+                                                {selectedSubjectId ===
+                                                    subject.id && (
+                                                    <X className="h-3 w-3 ml-1" />
+                                                )}
+                                            </Badge>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-h1
-                            <TabsContent value="all">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-12">
-                                                <Checkbox
-                                                    checked={
-                                                        questions.data.length >
-                                                            0 &&
-                                                        selectedIds.size ===
-                                                            questions.data
-                                                                .length
-                                                    }
-                                                    onCheckedChange={
-                                                        toggleSelectAll
-                                                    }
-                                                />
-                                            </TableHead>
-                                            <TableHead className="w-16">
-                                                ID
-                                            </TableHead>
-                                            <TableHead>Question Text</TableHead>
-                                            <TableHead>Subject</TableHead>
-                                            <TableHead>Created By</TableHead>
-                                            {activeTab !== "my-review" && (
-                                                <TableHead>
-                                                    Assigned To
+                                <TabsContent value="all">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-12">
+                                                    <Checkbox
+                                                        checked={
+                                                            selectAllMode ||
+                                                            (questions.data
+                                                                .length > 0 &&
+                                                                selectedIds.size ===
+                                                                    questions
+                                                                        .data
+                                                                        .length)
+                                                        }
+                                                        onCheckedChange={
+                                                            toggleSelectAll
+                                                        }
+                                                    />
                                                 </TableHead>
-                                            )}
-                                            <TableHead>State</TableHead>
-                                            <TableHead className="text-right">
-                                                Actions
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {renderQuestionsTable(questions)}
-                                    </TableBody>
-                                </Table>
+                                                <TableHead className="w-16">
+                                                    ID
+                                                </TableHead>
+                                                <TableHead>
+                                                    Question Text
+                                                </TableHead>
+                                                <TableHead>Subject</TableHead>
+                                                <TableHead>
+                                                    Created By
+                                                </TableHead>
+                                                {activeTab !== "my-review" && (
+                                                    <TableHead>
+                                                        Assigned To
+                                                    </TableHead>
+                                                )}
+                                                <TableHead>State</TableHead>
+                                                <TableHead className="text-right">
+                                                    Actions
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {renderQuestionsTable(questions)}
+                                        </TableBody>
+                                    </Table>
 
-                                {/* Pagination */}
-                                {questions && questions.last_page > 1 && (
-                                    <div className="flex justify-center mt-6">
-                                        <div className="flex items-center space-x-1">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={
-                                                    !questions.prev_page_url
+                                    {questions &&
+                                        (questions.last_page > 1 ||
+                                            questions.current_page > 1) &&
+                                        !(
+                                            questions.current_page === 1 &&
+                                            questions.data.length === 0
+                                        ) && (
+                                            <SmartPagination
+                                                currentPage={
+                                                    questions.current_page
                                                 }
-                                                onClick={() =>
-                                                    goToPage(
-                                                        questions.prev_page_url
-                                                    )
+                                                totalPages={questions.last_page}
+                                                onPageChange={() => {}}
+                                                prevPageUrl={
+                                                    questions.prev_page_url
                                                 }
-                                            >
-                                                Prev
-                                            </Button>
-                                            {Array.from(
-                                                { length: questions.last_page },
-                                                (_, i) => i + 1
-                                            )
-                                                .filter((page) => {
-                                                    const current =
-                                                        questions.current_page;
-                                                    return (
-                                                        page === 1 ||
-                                                        page ===
-                                                            questions.last_page ||
-                                                        (page >= current - 2 &&
-                                                            page <= current + 2)
-                                                    );
-                                                })
-                                                .map((page, index, array) => {
+                                                nextPageUrl={
+                                                    questions.next_page_url
+                                                }
+                                                onUrlChange={goToPage}
+                                                buildUrl={(page) => {
+                                                    const params =
+                                                        new URLSearchParams();
                                                     if (
-                                                        index > 0 &&
-                                                        array[index - 1] !==
-                                                            page - 1
+                                                        activeTab &&
+                                                        activeTab !== "all"
                                                     ) {
-                                                        return (
-                                                            <React.Fragment
-                                                                key={`ellipsis-${page}`}
-                                                            >
-                                                                <span className="px-2">
-                                                                    ...
-                                                                </span>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        goToPage(
-                                                                            `/admin/questions?page=${page}`
-                                                                        )
-                                                                    }
-                                                                    className={`px-3 py-1 rounded border text-sm ${
-                                                                        questions.current_page ===
-                                                                        page
-                                                                            ? "bg-blue-600 text-white"
-                                                                            : "hover:bg-gray-100"
-                                                                    }`}
-                                                                >
-                                                                    {page}
-                                                                </button>
-                                                            </React.Fragment>
+                                                        params.set(
+                                                            "tab",
+                                                            activeTab
                                                         );
                                                     }
-                                                    return (
-                                                        <button
-                                                            key={page}
-                                                            onClick={() =>
-                                                                goToPage(
-                                                                    `/admin/questions?page=${page}`
-                                                                )
-                                                            }
-                                                            className={`px-3 py-1 rounded border text-sm ${
-                                                                questions.current_page ===
-                                                                page
-                                                                    ? "bg-blue-600 text-white"
-                                                                    : "hover:bg-gray-100"
-                                                            }`}
-                                                        >
-                                                            {page}
-                                                        </button>
-                                                    );
-                                                })}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={
-                                                    !questions.next_page_url
-                                                }
-                                                onClick={() =>
-                                                    goToPage(
-                                                        questions.next_page_url
-                                                    )
-                                                }
-                                            >
-                                                Next
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-                                {questions && (
-                                    <div className="text-center mt-4 text-sm text-muted-foreground">
-                                        Total:{" "}
-                                        {questions.total ||
-                                            questions.data.length}{" "}
-                                        question(s)
-                                    </div>
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="review">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-12">
-                                                <Checkbox
-                                                    checked={
-                                                        questions.data.length >
-                                                            0 &&
-                                                        selectedIds.size ===
-                                                            questions.data
-                                                                .length
-                                                    }
-                                                    onCheckedChange={
-                                                        toggleSelectAll
-                                                    }
-                                                />
-                                            </TableHead>
-                                            <TableHead className="w-16">
-                                                ID
-                                            </TableHead>
-                                            <TableHead>Question Text</TableHead>
-                                            <TableHead>Subject</TableHead>
-                                            <TableHead>Created By</TableHead>
-                                            {activeTab !== "my-review" && (
-                                                <TableHead>
-                                                    Assigned To
-                                                </TableHead>
-                                            )}
-                                            <TableHead>State</TableHead>
-                                            <TableHead className="text-right">
-                                                Actions
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {renderQuestionsTable(questions)}
-                                    </TableBody>
-                                </Table>
-
-                                {/* Pagination */}
-                                {questions && questions.last_page > 1 && (
-                                    <div className="flex justify-center mt-6">
-                                        <div className="flex items-center space-x-1">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={
-                                                    !questions.prev_page_url
-                                                }
-                                                onClick={() =>
-                                                    goToPage(
-                                                        questions.prev_page_url
-                                                    )
-                                                }
-                                            >
-                                                Prev
-                                            </Button>
-                                            {Array.from(
-                                                { length: questions.last_page },
-                                                (_, i) => i + 1
-                                            )
-                                                .filter((page) => {
-                                                    const current =
-                                                        questions.current_page;
-                                                    return (
-                                                        page === 1 ||
-                                                        page ===
-                                                            questions.last_page ||
-                                                        (page >= current - 2 &&
-                                                            page <= current + 2)
-                                                    );
-                                                })
-                                                .map((page, index, array) => {
-                                                    if (
-                                                        index > 0 &&
-                                                        array[index - 1] !==
-                                                            page - 1
-                                                    ) {
-                                                        return (
-                                                            <React.Fragment
-                                                                key={`ellipsis-${page}`}
-                                                            >
-                                                                <span className="px-2">
-                                                                    ...
-                                                                </span>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        goToPage(
-                                                                            `/admin/questions?tab=review&page=${page}`
-                                                                        )
-                                                                    }
-                                                                    className={`px-3 py-1 rounded border text-sm ${
-                                                                        questions.current_page ===
-                                                                        page
-                                                                            ? "bg-blue-600 text-white"
-                                                                            : "hover:bg-gray-100"
-                                                                    }`}
-                                                                >
-                                                                    {page}
-                                                                </button>
-                                                            </React.Fragment>
+                                                    if (search) {
+                                                        params.set(
+                                                            "search",
+                                                            search
                                                         );
                                                     }
-                                                    return (
-                                                        <button
-                                                            key={page}
-                                                            onClick={() =>
-                                                                goToPage(
-                                                                    `/admin/questions?tab=review&page=${page}`
-                                                                )
-                                                            }
-                                                            className={`px-3 py-1 rounded border text-sm ${
-                                                                questions.current_page ===
-                                                                page
-                                                                    ? "bg-blue-600 text-white"
-                                                                    : "hover:bg-gray-100"
-                                                            }`}
-                                                        >
-                                                            {page}
-                                                        </button>
-                                                    );
-                                                })}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={
-                                                    !questions.next_page_url
-                                                }
-                                                onClick={() =>
-                                                    goToPage(
-                                                        questions.next_page_url
-                                                    )
-                                                }
-                                            >
-                                                Next
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-                                {questions && (
-                                    <div className="text-center mt-4 text-sm text-muted-foreground">
-                                        Total:{" "}
-                                        {questions.total ||
-                                            questions.data.length}{" "}
-                                        question(s)
-                                    </div>
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="my-review">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-12">
-                                                <Checkbox
-                                                    checked={
-                                                        questions.data.length >
-                                                            0 &&
-                                                        selectedIds.size ===
-                                                            questions.data
-                                                                .length
-                                                    }
-                                                    onCheckedChange={
-                                                        toggleSelectAll
-                                                    }
-                                                />
-                                            </TableHead>
-                                            <TableHead className="w-16">
-                                                ID
-                                            </TableHead>
-                                            <TableHead>Question Text</TableHead>
-                                            <TableHead>Subject</TableHead>
-                                            <TableHead>Created By</TableHead>
-                                            {activeTab !== "my-review" && (
-                                                <TableHead>
-                                                    Assigned To
-                                                </TableHead>
-                                            )}
-                                            <TableHead>State</TableHead>
-                                            <TableHead className="text-right">
-                                                Actions
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {renderQuestionsTable(questions)}
-                                    </TableBody>
-                                </Table>
-
-                                {/* Pagination */}
-                                {questions && questions.last_page > 1 && (
-                                    <div className="flex justify-center mt-6">
-                                        <div className="flex items-center space-x-1">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={
-                                                    !questions.prev_page_url
-                                                }
-                                                onClick={() =>
-                                                    goToPage(
-                                                        questions.prev_page_url
-                                                    )
-                                                }
-                                            >
-                                                Prev
-                                            </Button>
-                                            {Array.from(
-                                                { length: questions.last_page },
-                                                (_, i) => i + 1
-                                            )
-                                                .filter((page) => {
-                                                    const current =
-                                                        questions.current_page;
-                                                    return (
-                                                        page === 1 ||
-                                                        page ===
-                                                            questions.last_page ||
-                                                        (page >= current - 2 &&
-                                                            page <= current + 2)
-                                                    );
-                                                })
-                                                .map((page, index, array) => {
-                                                    if (
-                                                        index > 0 &&
-                                                        array[index - 1] !==
-                                                            page - 1
-                                                    ) {
-                                                        return (
-                                                            <React.Fragment
-                                                                key={`ellipsis-${page}`}
-                                                            >
-                                                                <span className="px-2">
-                                                                    ...
-                                                                </span>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        goToPage(
-                                                                            `/admin/questions?tab=my-review&page=${page}`
-                                                                        )
-                                                                    }
-                                                                    className={`px-3 py-1 rounded border text-sm ${
-                                                                        questions.current_page ===
-                                                                        page
-                                                                            ? "bg-blue-600 text-white"
-                                                                            : "hover:bg-gray-100"
-                                                                    }`}
-                                                                >
-                                                                    {page}
-                                                                </button>
-                                                            </React.Fragment>
+                                                    if (selectedSubjectId) {
+                                                        params.set(
+                                                            "subject_id",
+                                                            selectedSubjectId.toString()
                                                         );
                                                     }
-                                                    return (
-                                                        <button
-                                                            key={page}
-                                                            onClick={() =>
-                                                                goToPage(
-                                                                    `/admin/questions?tab=my-review&page=${page}`
-                                                                )
-                                                            }
-                                                            className={`px-3 py-1 rounded border text-sm ${
-                                                                questions.current_page ===
-                                                                page
-                                                                    ? "bg-blue-600 text-white"
-                                                                    : "hover:bg-gray-100"
-                                                            }`}
-                                                        >
-                                                            {page}
-                                                        </button>
+                                                    params.set(
+                                                        "page",
+                                                        page.toString()
                                                     );
-                                                })}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={
-                                                    !questions.next_page_url
-                                                }
-                                                onClick={() =>
-                                                    goToPage(
-                                                        questions.next_page_url
-                                                    )
-                                                }
-                                            >
-                                                Next
-                                            </Button>
+                                                    return `/admin/questions?${params.toString()}`;
+                                                }}
+                                            />
+                                        )}
+                                    {questions && (
+                                        <div className="text-center mt-4 text-sm text-muted-foreground">
+                                            Total:{" "}
+                                            {questions.total ||
+                                                questions.data.length}{" "}
+                                            question(s)
                                         </div>
-                                    </div>
-                                )}
-                                {questions && (
-                                    <div className="text-center mt-4 text-sm text-muted-foreground">
-                                        Total:{" "}
-                                        {questions.total ||
-                                            questions.data.length}{" "}
-                                        question(s)
-                                    </div>
-                                )}
-                            </TabsContent>
-                        </Tabs>
+                                    )}
+                                </TabsContent>
+
+                                <TabsContent value="review">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-12">
+                                                    <Checkbox
+                                                        checked={
+                                                            selectAllMode ||
+                                                            (questions.data
+                                                                .length > 0 &&
+                                                                selectedIds.size ===
+                                                                    questions
+                                                                        .data
+                                                                        .length)
+                                                        }
+                                                        onCheckedChange={
+                                                            toggleSelectAll
+                                                        }
+                                                    />
+                                                </TableHead>
+                                                <TableHead className="w-16">
+                                                    ID
+                                                </TableHead>
+                                                <TableHead>
+                                                    Question Text
+                                                </TableHead>
+                                                <TableHead>Subject</TableHead>
+                                                <TableHead>
+                                                    Created By
+                                                </TableHead>
+                                                {activeTab !== "my-review" && (
+                                                    <TableHead>
+                                                        Assigned To
+                                                    </TableHead>
+                                                )}
+                                                <TableHead>State</TableHead>
+                                                <TableHead className="text-right">
+                                                    Actions
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {renderQuestionsTable(questions)}
+                                        </TableBody>
+                                    </Table>
+
+                                    {questions &&
+                                        (questions.last_page > 1 ||
+                                            questions.current_page > 1) &&
+                                        !(
+                                            questions.current_page === 1 &&
+                                            questions.data.length === 0
+                                        ) && (
+                                            <SmartPagination
+                                                currentPage={
+                                                    questions.current_page
+                                                }
+                                                totalPages={questions.last_page}
+                                                onPageChange={() => {}}
+                                                prevPageUrl={
+                                                    questions.prev_page_url
+                                                }
+                                                nextPageUrl={
+                                                    questions.next_page_url
+                                                }
+                                                onUrlChange={goToPage}
+                                                buildUrl={(page) => {
+                                                    const params =
+                                                        new URLSearchParams();
+                                                    if (
+                                                        activeTab &&
+                                                        activeTab !== "all"
+                                                    ) {
+                                                        params.set(
+                                                            "tab",
+                                                            activeTab
+                                                        );
+                                                    }
+                                                    if (search) {
+                                                        params.set(
+                                                            "search",
+                                                            search
+                                                        );
+                                                    }
+                                                    if (selectedSubjectId) {
+                                                        params.set(
+                                                            "subject_id",
+                                                            selectedSubjectId.toString()
+                                                        );
+                                                    }
+                                                    params.set(
+                                                        "page",
+                                                        page.toString()
+                                                    );
+                                                    return `/admin/questions?${params.toString()}`;
+                                                }}
+                                            />
+                                        )}
+                                    {questions && (
+                                        <div className="text-center mt-4 text-sm text-muted-foreground">
+                                            Total:{" "}
+                                            {questions.total ||
+                                                questions.data.length}{" "}
+                                            question(s)
+                                        </div>
+                                    )}
+                                </TabsContent>
+
+                                <TabsContent value="my-review">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-12">
+                                                    <Checkbox
+                                                        checked={
+                                                            selectAllMode ||
+                                                            (questions.data
+                                                                .length > 0 &&
+                                                                selectedIds.size ===
+                                                                    questions
+                                                                        .data
+                                                                        .length)
+                                                        }
+                                                        onCheckedChange={
+                                                            toggleSelectAll
+                                                        }
+                                                    />
+                                                </TableHead>
+                                                <TableHead className="w-16">
+                                                    ID
+                                                </TableHead>
+                                                <TableHead>
+                                                    Question Text
+                                                </TableHead>
+                                                <TableHead>Subject</TableHead>
+                                                <TableHead>
+                                                    Created By
+                                                </TableHead>
+                                                {activeTab !== "my-review" && (
+                                                    <TableHead>
+                                                        Assigned To
+                                                    </TableHead>
+                                                )}
+                                                <TableHead>State</TableHead>
+                                                <TableHead className="text-right">
+                                                    Actions
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {renderQuestionsTable(questions)}
+                                        </TableBody>
+                                    </Table>
+
+                                    {questions &&
+                                        (questions.last_page > 1 ||
+                                            questions.current_page > 1) &&
+                                        !(
+                                            questions.current_page === 1 &&
+                                            questions.data.length === 0
+                                        ) && (
+                                            <SmartPagination
+                                                currentPage={
+                                                    questions.current_page
+                                                }
+                                                totalPages={questions.last_page}
+                                                onPageChange={() => {}}
+                                                prevPageUrl={
+                                                    questions.prev_page_url
+                                                }
+                                                nextPageUrl={
+                                                    questions.next_page_url
+                                                }
+                                                onUrlChange={goToPage}
+                                                buildUrl={(page) => {
+                                                    const params =
+                                                        new URLSearchParams();
+                                                    if (
+                                                        activeTab &&
+                                                        activeTab !== "all"
+                                                    ) {
+                                                        params.set(
+                                                            "tab",
+                                                            activeTab
+                                                        );
+                                                    }
+                                                    if (search) {
+                                                        params.set(
+                                                            "search",
+                                                            search
+                                                        );
+                                                    }
+                                                    if (selectedSubjectId) {
+                                                        params.set(
+                                                            "subject_id",
+                                                            selectedSubjectId.toString()
+                                                        );
+                                                    }
+                                                    params.set(
+                                                        "page",
+                                                        page.toString()
+                                                    );
+                                                    return `/admin/questions?${params.toString()}`;
+                                                }}
+                                            />
+                                        )}
+                                    {questions && (
+                                        <div className="text-center mt-4 text-sm text-muted-foreground">
+                                            Total:{" "}
+                                            {questions.total ||
+                                                questions.data.length}{" "}
+                                            question(s)
+                                        </div>
+                                    )}
+                                </TabsContent>
+                            </Tabs>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -1078,6 +1188,7 @@ h1
                     open={deleteDialogOpen}
                     onOpenChange={setDeleteDialogOpen}
                     question={selectedQuestion}
+                    onSuccess={handleDeleteSuccess}
                 />
             </div>
         </AdminLayout>

@@ -6,21 +6,21 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     return (
         <div
             data-slot="table-container"
-            className="relative w-full overflow-x-auto"
+            className="relative w-full overflow-x-auto md:overflow-x-visible"
         >
             <table
                 data-slot="table"
-                className={cn("w-full caption-bottom text-sm", className)}
+                className={cn(
+                    "w-full caption-bottom text-sm min-w-full",
+                    className
+                )}
                 {...props}
             />
         </div>
     );
 }
 
-function TableHeader({
-    className,
-    ...props
-}: React.ComponentProps<"thead">) {
+function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
     return (
         <thead
             data-slot="table-header"
@@ -40,10 +40,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
     );
 }
 
-function TableFooter({
-    className,
-    ...props
-}: React.ComponentProps<"tfoot">) {
+function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
     return (
         <tfoot
             data-slot="table-footer"
@@ -74,7 +71,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
         <th
             data-slot="table-head"
             className={cn(
-                "text-foreground h-10 px-2 align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+                "text-foreground h-10 px-2 align-middle font-medium [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
                 className
             )}
             {...props}
@@ -87,7 +84,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
         <td
             data-slot="table-cell"
             className={cn(
-                "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+                "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
                 className
             )}
             {...props}
@@ -118,6 +115,3 @@ export {
     TableCell,
     TableCaption,
 };
-
-
-
