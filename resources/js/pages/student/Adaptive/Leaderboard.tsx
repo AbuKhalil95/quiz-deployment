@@ -46,9 +46,9 @@ interface Props {
 }
 
 const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
-    if (rank === 2) return <Medal className="h-5 w-5 text-gray-400" />;
-    if (rank === 3) return <Award className="h-5 w-5 text-amber-600" />;
+    if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />;
+    if (rank === 2) return <Medal className="h-5 w-5 text-slate-400 dark:text-slate-300" />;
+    if (rank === 3) return <Award className="h-5 w-5 text-amber-700 dark:text-amber-500" />;
     return null;
 };
 
@@ -144,7 +144,7 @@ export default function Leaderboard({
                                                     key={`${entry.student_id}-${entry.attempted_at}`}
                                                     className={
                                                         isCurrentStudent
-                                                            ? "bg-blue-50 dark:bg-blue-950"
+                                                            ? "bg-primary/5 dark:bg-primary/10"
                                                             : ""
                                                     }
                                                 >
@@ -176,14 +176,12 @@ export default function Leaderboard({
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <Badge
-                                                            variant={
-                                                                entry.percentage >=
-                                                                80
-                                                                    ? "default"
-                                                                    : entry.percentage >=
-                                                                      60
-                                                                    ? "secondary"
-                                                                    : "outline"
+                                                            className={
+                                                                entry.percentage >= 80
+                                                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                                                    : entry.percentage >= 60
+                                                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                                                                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                                                             }
                                                         >
                                                             {entry.percentage.toFixed(1)}%

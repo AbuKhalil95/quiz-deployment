@@ -93,7 +93,7 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     // Question fetching routes (for quiz creation) - must come before parameterized routes
     Route::get('/admin/questions/by-subject/{subjectId}', [QuestionController::class, 'bySubject'])->name('admin.questions.bySubject');
     Route::get('/admin/questions/by-subjects', [QuestionController::class, 'bySubjects'])->name('admin.questions.bySubjects');
-    Route::post('/admin/questions/adaptive', [QuestionController::class, 'adaptive'])->name('admin.questions.adaptive');
+    Route::post('/admin/questions/adaptive', [\App\Http\Controllers\Student\AdaptiveQuizController::class, 'generate'])->name('admin.questions.adaptive');
 
     // Question actions
     Route::post('/admin/questions/{id}/assign', [QuestionController::class, 'assign'])->name('admin.questions.assign');

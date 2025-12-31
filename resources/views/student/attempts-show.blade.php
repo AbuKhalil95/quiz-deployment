@@ -35,6 +35,9 @@
 
         <div class="card card-shadow mb-3">
             <div class="card-body">
+                @if($question->subject)
+                    <span class="badge bg-secondary mb-2">{{ $question->subject->name }}</span>
+                @endif
                 <h5>
                     Q{{ $answers->firstItem() + $aIndex }}. {{ $question->question_text }}
                 </h5>

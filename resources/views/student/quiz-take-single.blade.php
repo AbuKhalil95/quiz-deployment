@@ -9,11 +9,13 @@
                   <p class="text-center fw-bold">Question {{ $questionIndex + 1 }}/{{ count($questions) }}</p>
 
     
-        <div class=" card-shadow mb-3">
+        <div class="card-shadow mb-3">
             <div class="card-body">
 
             <div class="card mb-3 p-2">
-                
+                @if($question->subject)
+                    <span class="badge bg-secondary mb-2">{{ $question->subject->name }}</span>
+                @endif
                 <h5 class="mb-3">
                     {{ $question->question_text }}
                 </h5>
@@ -24,7 +26,7 @@
                     @csrf
 
                     @foreach ($question->options as $option)
-                        <div class=" d-flex flex-row card gap-2 p-3 m-2" style="cursor: pointer;">
+                        <div class="d-flex flex-row card gap-2 p-3 m-2" style="cursor: pointer;">
                             <input class="form-check-input" type="radio" name="answer"
                                    id="option{{ $option->id }}" value="{{ $option->id }}" required>
                             <label class="form-check-label w-100" for="option{{ $option->id }}">

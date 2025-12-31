@@ -27,10 +27,17 @@ class AdaptiveQuizController extends Controller
     }
 
     /**
-     * Generate adaptive quiz for the authenticated student
+     * Generate adaptive quiz for the authenticated user (student, admin, or teacher)
+     * Admin/teacher will generate quizzes for themselves
      */
     public function generate(Request $request)
     {
+        $user = $this->user();
+
+        if (! $user) {
+            abort(401, 'Unauthenticated');
+        }
+
         $request->validate([
             'total_questions' => 'required|integer|min:1',
             'strategy' => 'required|in:worst_performing,never_attempted,recently_incorrect,weak_subjects,mixed',
@@ -40,10 +47,15 @@ class AdaptiveQuizController extends Controller
             'time_limit_minutes' => 'nullable|integer|min:1',
         ]);
 
-        $studentId = Auth::id();
+        // Always use the authenticated user's ID as the target student
+        $studentId = $user->id;
         $total = $request->get('total_questions');
         $strategy = $request->get('strategy');
         $subjectIds = $request->get('subject_ids', []);
+        // Normalize subject IDs to integers
+        $subjectIds = array_map('intval', array_filter($subjectIds, function ($id) {
+            return ! empty($id);
+        }));
         $title = $request->get('title');
         $timeLimit = $request->get('time_limit_minutes');
 
@@ -122,24 +134,9 @@ class AdaptiveQuizController extends Controller
 
             case 'mixed':
             default:
+                // Random selection of questions
                 $allQuestions = $query->get();
-                $neverAttempted = $allQuestions->filter(function ($question) use ($studentId) {
-                    return ! $question->hasBeenAttemptedBy($studentId);
-                });
-
-                $worstPerforming = $allQuestions->map(function ($question) use ($studentId) {
-                    $stats = $question->getStudentPerformance($studentId);
-
-                    return [
-                        'question' => $question,
-                        'accuracy' => $stats ? $stats['accuracy_rate'] : 50,
-                    ];
-                })->sortBy('accuracy')->pluck('question');
-
-                $half = (int) ceil($total / 2);
-                $questions = $neverAttempted->take($half)
-                    ->merge($worstPerforming->take($total - $half))
-                    ->shuffle();
+                $questions = $allQuestions->shuffle();
                 break;
         }
 
@@ -152,7 +149,9 @@ class AdaptiveQuizController extends Controller
             $selected = collect();
             $index = 0;
             foreach ($subjectIds as $subjectId) {
+                $subjectId = (int) $subjectId; // Ensure integer for groupBy key matching
                 $count = $questionsPerSubject + ($index < $remainder ? 1 : 0);
+                // groupBy creates integer keys, so we need to match with integer
                 $subjectQuestions = $questionsBySubject->get($subjectId, collect())->shuffle();
                 $selected = $selected->merge($subjectQuestions->take($count));
                 $index++;
@@ -172,18 +171,18 @@ class AdaptiveQuizController extends Controller
 
         // Create quiz record
         $strategyNames = [
-            'worst_performing' => 'Worst Performing',
+            'mixed' => 'Random Questions',
             'never_attempted' => 'Never Attempted',
+            'worst_performing' => 'Worst Performing',
             'recently_incorrect' => 'Review Incorrect',
             'weak_subjects' => 'Weak Subjects',
-            'mixed' => 'Mixed Challenge',
         ];
 
-        $student = Auth::user();
+        $targetStudent = \App\Models\User::find($studentId);
         $quizTitle = $title ?: sprintf(
             'Challenge: %s - %s',
             $strategyNames[$strategy] ?? 'Adaptive',
-            $student->name
+            $targetStudent ? $targetStudent->name : 'Student'
         );
 
         $quiz = Quiz::create([
@@ -192,7 +191,7 @@ class AdaptiveQuizController extends Controller
             'subject_id' => ! empty($subjectIds) && count($subjectIds) === 1 ? $subjectIds[0] : null,
             'total_questions' => $questions->count(),
             'time_limit_minutes' => $timeLimit,
-            'created_by' => Auth::id(),
+            'created_by' => $user ? $user->id : null,
         ]);
 
         AdaptiveQuizAssignment::create([
@@ -209,6 +208,33 @@ class AdaptiveQuizController extends Controller
                 'order' => $index + 1,
             ]);
         });
+
+        // Return JSON for admin/teacher API calls, redirect for student UI
+        $isAdminOrTeacher = $user->hasRole('admin') || $user->hasRole('teacher');
+        if ($isAdminOrTeacher && $request->wantsJson()) {
+            $quiz->load('questions.subject');
+
+            return response()->json([
+                'quiz' => [
+                    'id' => $quiz->id,
+                    'title' => $quiz->title,
+                    'mode' => $quiz->mode,
+                    'total_questions' => $quiz->total_questions,
+                    'time_limit_minutes' => $quiz->time_limit_minutes,
+                ],
+                'questions' => $questions->values()->map(function ($question) {
+                    return [
+                        'id' => $question->id,
+                        'question_text' => $question->question_text,
+                        'subject_id' => $question->subject_id,
+                        'subject' => $question->subject ? [
+                            'id' => $question->subject->id,
+                            'name' => $question->subject->name,
+                        ] : null,
+                    ];
+                })->toArray(),
+            ]);
+        }
 
         return redirect()->route('student.quizzes.show', $quiz->id)
             ->with('success', 'Adaptive quiz generated successfully!');
@@ -282,7 +308,7 @@ class AdaptiveQuizController extends Controller
             'never_attempted' => 'Never Attempted',
             'recently_incorrect' => 'Review Incorrect',
             'weak_subjects' => 'Weak Subjects',
-            'mixed' => 'Mixed Challenge',
+            'mixed' => 'Random Questions',
         ];
 
         $subjects = Subject::orderBy('name')->get(['id', 'name']);
@@ -390,7 +416,7 @@ class AdaptiveQuizController extends Controller
             'never_attempted' => 'Never Attempted',
             'recently_incorrect' => 'Review Incorrect',
             'weak_subjects' => 'Weak Subjects',
-            'mixed' => 'Mixed Challenge',
+            'mixed' => 'Random Questions',
         ];
 
         return Inertia::render('student/Adaptive/MyChallenges', [

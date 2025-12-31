@@ -13,7 +13,7 @@ class AttemptController extends Controller
         $attempts = QuizAttempt::with('quiz')
             ->where('student_id', Auth::id())
             ->orderByDesc('created_at')
-            ->paginate(10); 
+            ->paginate(10);
 
         return view('student.attempts-index', compact('attempts'));
     }
@@ -24,8 +24,8 @@ class AttemptController extends Controller
             abort(403);
         }
 
-        $attempt->load(['quiz', 'answers.question.options']);
-        $answers = $attempt->answers()->paginate(5); 
+        $attempt->load(['quiz', 'answers.question.options', 'answers.question.subject']);
+        $answers = $attempt->answers()->paginate(5);
 
         return view('student.attempts-show', compact('attempt', 'answers'));
     }
@@ -42,7 +42,7 @@ class AttemptController extends Controller
 
         // Find the next unanswered question
         $nextIndex = $questions->search(function ($question) use ($attempt) {
-            return !$attempt->answers->contains('question_id', $question->id);
+            return ! $attempt->answers->contains('question_id', $question->id);
         });
 
         // If all questions are answered, mark as finished

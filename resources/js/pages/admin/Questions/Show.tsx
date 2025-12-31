@@ -10,6 +10,7 @@ import { useQuestionActions } from "@/hooks/useQuestionActions";
 import { useQuestionActionHandlers } from "@/hooks/useQuestionActionHandlers";
 import { QuestionActions } from "@/components/common/QuestionActions";
 import { QuestionStatusBadge } from "@/components/common/QuestionStatusBadge";
+import { SubjectBadge } from "@/components/common/SubjectBadge";
 
 interface Subject {
     id: number;
@@ -140,9 +141,17 @@ export default function Show({ question }: Props) {
                                         <Label className="text-muted-foreground">
                                             Subject
                                         </Label>
-                                        <p className="text-lg font-semibold">
-                                            {question.subject?.name || "N/A"}
-                                        </p>
+                                        <div className="mt-1">
+                                            {question.subject ? (
+                                                <SubjectBadge
+                                                    subject={question.subject}
+                                                />
+                                            ) : (
+                                                <span className="text-muted-foreground text-sm">
+                                                    N/A
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 {question.state && (

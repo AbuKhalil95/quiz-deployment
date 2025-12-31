@@ -452,7 +452,7 @@ class QuizController extends Controller
             'never_attempted' => 'Never Attempted',
             'recently_incorrect' => 'Review Incorrect',
             'weak_subjects' => 'Weak Subjects',
-            'mixed' => 'Mixed Challenge',
+            'mixed' => 'Random Questions',
         ];
 
         $subjects = Subject::orderBy('name')->get(['id', 'name']);

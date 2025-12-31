@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QuestionStatusBadge } from "@/components/common/QuestionStatusBadge";
+import { SubjectBadge } from "@/components/common/SubjectBadge";
 import {
     Plus,
     X,
@@ -464,7 +465,15 @@ export default function Index({ questions, subjects, filters }: Props) {
                         </div>
                     )}
                 </TableCell>
-                <TableCell>{question.subject?.name || "N/A"}</TableCell>
+                <TableCell>
+                    {question.subject ? (
+                        <SubjectBadge subject={question.subject} as="span" />
+                    ) : (
+                        <span className="text-muted-foreground text-sm">
+                            N/A
+                        </span>
+                    )}
+                </TableCell>
                 <TableCell>{question.creator?.name || "N/A"}</TableCell>
                 {showAssignedTo && (
                     <TableCell>

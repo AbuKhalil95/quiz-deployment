@@ -1,6 +1,12 @@
 import * as React from "react";
 import { Head, useForm, router } from "@inertiajs/react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,11 +66,31 @@ export default function Create({ subjects }: Props) {
     };
 
     const strategyOptions = [
-        { value: "worst_performing", label: "Worst Performing" },
-        { value: "never_attempted", label: "Never Attempted" },
-        { value: "recently_incorrect", label: "Review Incorrect" },
-        { value: "weak_subjects", label: "Weak Subjects" },
-        { value: "mixed", label: "Mixed Challenge" },
+        {
+            value: "mixed",
+            label: "Random Questions",
+            description: "Random selection of questions from selected subjects",
+        },
+        {
+            value: "never_attempted",
+            label: "Never Attempted",
+            description: "Questions you haven't tried before",
+        },
+        {
+            value: "worst_performing",
+            label: "Worst Performing",
+            description: "Questions with the lowest overall accuracy rate",
+        },
+        {
+            value: "recently_incorrect",
+            label: "Review Incorrect",
+            description: "Questions you got wrong previously",
+        },
+        {
+            value: "weak_subjects",
+            label: "Weak Subjects",
+            description: "Questions from subjects where you perform worst",
+        },
     ];
 
     return (
@@ -98,7 +124,9 @@ export default function Create({ subjects }: Props) {
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Strategy Selection */}
                             <div className="space-y-2">
-                                <Label htmlFor="strategy">Strategy *</Label>
+                                <Label htmlFor="strategy">
+                                    Question Selection Strategy *
+                                </Label>
                                 <Select
                                     value={form.data.strategy}
                                     onValueChange={(value) =>
@@ -123,10 +151,15 @@ export default function Create({ subjects }: Props) {
                                     message={form.errors.strategy}
                                     className="mt-1"
                                 />
-                                <p className="text-sm text-muted-foreground">
-                                    Choose how questions should be selected for
-                                    this quiz
-                                </p>
+                                {form.data.strategy && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {strategyOptions.find(
+                                            (opt) =>
+                                                opt.value === form.data.strategy
+                                        )?.description ||
+                                            "Choose how questions should be selected for this quiz"}
+                                    </p>
+                                )}
                             </div>
 
                             {/* Total Questions */}
@@ -264,6 +297,3 @@ export default function Create({ subjects }: Props) {
         </>
     );
 }
-
-
-
