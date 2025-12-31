@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { route } from "ziggy-js";
-import { Clock, BookOpen, Trophy, Eye, Play } from "lucide-react";
+import { Clock, BookOpen, Trophy, Eye, Play, Flag } from "lucide-react";
 import { SmartPagination } from "@/components/common/SmartPagination";
 import { RelativeDate } from "@/components/common/RelativeDate";
 
@@ -232,6 +232,36 @@ export default function Dashboard({
                         </div>
                     </>
                 )}
+
+                {/* Flagged Questions Section */}
+                <div className="border-t pt-8">
+                    <h2 className="text-2xl font-semibold mb-4">Study Tools</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <Card className="flex flex-col">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Flag className="h-5 w-5 text-yellow-500" />
+                                    Flagged Questions
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col">
+                                <p className="text-muted-foreground mb-4">
+                                    Review questions you've flagged for later
+                                    study with hidden answers
+                                </p>
+                                <Button asChild className="w-full mt-auto">
+                                    <Link
+                                        href={route(
+                                            "student.questions.flagged"
+                                        )}
+                                    >
+                                        View Flagged Questions
+                                    </Link>
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
 
                 {/* Adaptive Quiz Section */}
                 <div className="border-t pt-8">

@@ -15,10 +15,12 @@ class AdaptiveQuizAssignment extends Model
         'target_student_id',
         'strategy',
         'subject_ids',
+        'is_public',
     ];
 
     protected $casts = [
         'subject_ids' => 'array',
+        'is_public' => 'boolean',
     ];
 
     public function quiz()

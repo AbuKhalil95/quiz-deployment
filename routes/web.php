@@ -153,6 +153,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('student.dashboard');
     Route::get('dashboard/subjects/{id}/quizzes', [DashboardController::class, 'quizzesBySubject'])->name('student.subject.quizzes');
 
+    Route::prefix('student/quizzes/adaptive')->name('student.adaptive.')->group(function () {
+        Route::get('/create', [AdaptiveQuizController::class, 'create'])
+            ->name('create');
+        Route::post('/generate', [AdaptiveQuizController::class, 'generate'])
+            ->name('generate');
+        Route::get('/', [AdaptiveQuizController::class, 'index'])
+            ->name('index');
+        Route::get('/my-challenges', [AdaptiveQuizController::class, 'myChallenges'])
+            ->name('myChallenges');
+        Route::patch('/{quiz}/toggle-visibility', [AdaptiveQuizController::class, 'toggleVisibility'])
+            ->name('toggleVisibility');
+    });
+
     // Show quiz info + "Start quiz" button
     Route::get('/student/quizzes/{quiz}', [StudentQuizController::class, 'show'])
         ->name('student.quizzes.show');
@@ -160,6 +173,9 @@ Route::middleware(['auth'])->group(function () {
     // Start quiz (create QuizAttempt + redirect to questions page)
     Route::post('/student/quizzes/{quiz}/start', [StudentQuizController::class, 'start'])
         ->name('student.quizzes.start');
+
+    Route::get('/student/quizzes/{quiz}/leaderboard', [AdaptiveQuizController::class, 'leaderboard'])
+        ->name('student.quizzes.leaderboard');
 
     // Take quiz (show questions)
     // Route::get('/student/attempts/{attempt}', [StudentQuizController::class, 'take'])
@@ -185,18 +201,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('attempts/{attempt}/resume', [AttemptController::class, 'resume'])
         ->name('student.attempts.resume');
 
-    // Adaptive Quiz Routes
-    Route::prefix('student/quizzes/adaptive')->name('student.adaptive.')->group(function () {
-        Route::get('/create', [AdaptiveQuizController::class, 'create'])
-            ->name('create');
-        Route::post('/generate', [AdaptiveQuizController::class, 'generate'])
-            ->name('generate');
-        Route::get('/', [AdaptiveQuizController::class, 'index'])
-            ->name('index');
-        Route::get('/my-challenges', [AdaptiveQuizController::class, 'myChallenges'])
-            ->name('myChallenges');
-    });
-
-    Route::get('/student/quizzes/{quiz}/leaderboard', [AdaptiveQuizController::class, 'leaderboard'])
-        ->name('student.quizzes.leaderboard');
+    // Flagged Questions
+    Route::get('/student/questions/flagged', [\App\Http\Controllers\Student\FlaggedQuestionsController::class, 'index'])
+        ->name('student.questions.flagged');
+    Route::post('/student/questions/{question}/flag', [\App\Http\Controllers\Student\FlaggedQuestionsController::class, 'store'])
+        ->name('student.questions.flag');
+    Route::delete('/student/questions/{question}/flag', [\App\Http\Controllers\Student\FlaggedQuestionsController::class, 'destroy'])
+        ->name('student.questions.unflag');
 });

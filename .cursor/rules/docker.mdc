@@ -13,3 +13,14 @@ alwaysApply: true
 -   DB host: `db` (not localhost)
 
 **Services:** app=quiz_app, db=quizzes_db, nginx=quizzes_nginx
+
+## Migration Files
+
+**CRITICAL: Create migration files on the host (not via docker exec) to ensure proper file permissions:**
+
+```bash
+# ✅ Preferred - Creates file with correct permissions
+php artisan make:migration add_column_to_table
+
+Migration files created via docker exec are owned by root, preventing edits. Always create migrations on the host when possible, or fix permissions immediately after creation.
+```

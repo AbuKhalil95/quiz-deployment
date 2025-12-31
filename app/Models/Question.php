@@ -267,4 +267,10 @@ class Question extends Model
             ->where('is_correct', false)
             ->exists();
     }
+
+    public function flaggedBy()
+    {
+        return $this->belongsToMany(User::class, 'question_flags')
+            ->withTimestamps();
+    }
 }

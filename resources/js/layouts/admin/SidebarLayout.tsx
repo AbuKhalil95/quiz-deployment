@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { AppSidebarHeader } from "@/components/app-sidebar-header";
 import Messages from "@/components/messages";
 import { type BreadcrumbItem } from "@/types";
-import { type PropsWithChildren } from "react";
+import { useEffect } from "react";
 
 interface SidebarLayoutProps {
     children: React.ReactNode;
@@ -15,6 +15,13 @@ export default function SidebarLayout({
     children,
     breadcrumbs = [],
 }: SidebarLayoutProps) {
+    // Force light theme for admin side
+    useEffect(() => {
+        const root = document.documentElement;
+        root.classList.remove("dark");
+        root.classList.add("light");
+    }, []);
+
     return (
         <AppShell variant="sidebar">
             <AppSidebar />
@@ -26,4 +33,3 @@ export default function SidebarLayout({
         </AppShell>
     );
 }
-

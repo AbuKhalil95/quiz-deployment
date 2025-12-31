@@ -74,4 +74,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(AdaptiveQuizAssignment::class, 'target_student_id');
     }
+
+    public function flaggedQuestions()
+    {
+        return $this->belongsToMany(Question::class, 'question_flags')
+            ->withTimestamps();
+    }
 }

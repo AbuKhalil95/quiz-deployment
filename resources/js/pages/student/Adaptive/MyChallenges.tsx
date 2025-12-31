@@ -3,9 +3,21 @@ import { Head, router } from "@inertiajs/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { SmartPagination } from "@/components/common/SmartPagination";
 import { RelativeDate } from "@/components/common/RelativeDate";
-import { ArrowLeft, Trophy, Users, BookOpen, Clock, BarChart3 } from "lucide-react";
+import {
+    ArrowLeft,
+    Trophy,
+    Users,
+    BookOpen,
+    Clock,
+    BarChart3,
+    Play,
+    Globe,
+    Lock,
+} from "lucide-react";
 import { route } from "ziggy-js";
 
 interface Quiz {
@@ -22,6 +34,7 @@ interface Quiz {
     subject_ids: number[] | null;
     attempt_count: number;
     best_score: number | null;
+    is_public: boolean;
 }
 
 interface Props {
@@ -52,7 +65,6 @@ const strategyColors: Record<string, string> = {
     mixed: "bg-green-100 text-green-800",
 };
 
-
 export default function MyChallenges({ quizzes, strategies }: Props) {
     const handlePageChange = (url: string | null) => {
         if (url) {
@@ -69,6 +81,19 @@ export default function MyChallenges({ quizzes, strategies }: Props) {
 
     const getPercentage = (score: number, total: number) => {
         return total > 0 ? Math.round((score / total) * 100) : 0;
+    };
+
+    const handleToggleVisibility = (quizId: number, currentValue: boolean) => {
+        router.patch(
+            route("student.adaptive.toggleVisibility", quizId),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Success message is handled by flash messages
+                },
+            }
+        );
     };
 
     return (
@@ -124,7 +149,7 @@ export default function MyChallenges({ quizzes, strategies }: Props) {
                             {quizzes.data.map((quiz) => (
                                 <Card
                                     key={quiz.id}
-                                    className="hover:shadow-lg transition-shadow"
+                                    className="hover:shadow-lg transition-shadow justify-between"
                                 >
                                     <CardHeader>
                                         <div className="flex items-start justify-between">
@@ -164,7 +189,9 @@ export default function MyChallenges({ quizzes, strategies }: Props) {
                                                 {quiz.time_limit_minutes && (
                                                     <span className="flex items-center text-muted-foreground">
                                                         <Clock className="mr-1 h-3 w-3" />
-                                                        {quiz.time_limit_minutes}{" "}
+                                                        {
+                                                            quiz.time_limit_minutes
+                                                        }{" "}
                                                         min
                                                     </span>
                                                 )}
@@ -194,20 +221,55 @@ export default function MyChallenges({ quizzes, strategies }: Props) {
                                                 </div>
                                             )}
 
+                                            {/* Public/Private Toggle */}
+                                            <div className="flex items-center justify-between pt-2 pb-1 border-t">
+                                                <div className="flex items-center space-x-2">
+                                                    {quiz.is_public ? (
+                                                        <Globe className="h-4 w-4 text-muted-foreground" />
+                                                    ) : (
+                                                        <Lock className="h-4 w-4 text-muted-foreground" />
+                                                    )}
+                                                    <Label
+                                                        htmlFor={`visibility-${quiz.id}`}
+                                                        className="text-sm cursor-pointer"
+                                                    >
+                                                        {quiz.is_public
+                                                            ? "Public"
+                                                            : "Private"}
+                                                    </Label>
+                                                </div>
+                                                <Switch
+                                                    id={`visibility-${quiz.id}`}
+                                                    checked={quiz.is_public}
+                                                    onCheckedChange={() =>
+                                                        handleToggleVisibility(
+                                                            quiz.id,
+                                                            quiz.is_public
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+
                                             <div className="flex space-x-2 pt-2">
                                                 <Button
-                                                    variant="outline"
                                                     className="flex-1"
+                                                    disabled={
+                                                        quiz.total_questions ===
+                                                        0
+                                                    }
                                                     onClick={() =>
-                                                        router.visit(
+                                                        router.post(
                                                             route(
-                                                                "student.quizzes.show",
+                                                                "student.quizzes.start",
                                                                 quiz.id
                                                             )
                                                         )
                                                     }
                                                 >
-                                                    View Quiz
+                                                    <Play className="mr-2 h-4 w-4" />
+                                                    {quiz.total_questions === 0
+                                                        ? "No Questions"
+                                                        : "Start Quiz"}
                                                 </Button>
                                                 <Button
                                                     variant="outline"
@@ -251,6 +313,3 @@ export default function MyChallenges({ quizzes, strategies }: Props) {
         </>
     );
 }
-
-
-

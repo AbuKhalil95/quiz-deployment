@@ -45,6 +45,7 @@ class AdaptiveQuizController extends Controller
             'subject_ids.*' => 'exists:subjects,id',
             'title' => 'nullable|string|max:255',
             'time_limit_minutes' => 'nullable|integer|min:1',
+            'is_public' => 'nullable|boolean',
         ]);
 
         // Always use the authenticated user's ID as the target student
@@ -58,6 +59,7 @@ class AdaptiveQuizController extends Controller
         }));
         $title = $request->get('title');
         $timeLimit = $request->get('time_limit_minutes');
+        $isPublic = $request->boolean('is_public', false);
 
         $query = Question::where('state', Question::STATE_DONE)
             ->with('subject:id,name');
@@ -199,6 +201,7 @@ class AdaptiveQuizController extends Controller
             'target_student_id' => $studentId,
             'strategy' => $strategy,
             'subject_ids' => ! empty($subjectIds) ? $subjectIds : null,
+            'is_public' => $isPublic,
         ]);
 
         $questions->each(function ($question, $index) use ($quiz) {
@@ -248,8 +251,8 @@ class AdaptiveQuizController extends Controller
         $currentStudentId = Auth::id();
 
         $query = Quiz::where('mode', 'adaptive')
-            ->whereHas('adaptiveAssignment', function ($q) use ($currentStudentId) {
-                $q->where('target_student_id', '!=', $currentStudentId);
+            ->whereHas('adaptiveAssignment', function ($q) {
+                $q->where('is_public', true);
             })
             ->with(['adaptiveAssignment.targetStudent:id,name', 'subject:id,name', 'attempts:id,quiz_id']);
 
@@ -289,6 +292,7 @@ class AdaptiveQuizController extends Controller
                 'total_questions' => $quiz->total_questions,
                 'time_limit_minutes' => $quiz->time_limit_minutes,
                 'created_at' => $quiz->created_at,
+                'created_by' => $quiz->created_by,
                 'subject' => $quiz->subject ? [
                     'id' => $quiz->subject->id,
                     'name' => $quiz->subject->name,
@@ -408,6 +412,7 @@ class AdaptiveQuizController extends Controller
                 'subject_ids' => $quiz->adaptiveAssignment ? $quiz->adaptiveAssignment->subject_ids : null,
                 'attempt_count' => $quiz->attempts->count(),
                 'best_score' => $bestAttempt ? $bestAttempt->score : null,
+                'is_public' => $quiz->adaptiveAssignment ? $quiz->adaptiveAssignment->is_public : false,
             ];
         });
 
@@ -422,6 +427,41 @@ class AdaptiveQuizController extends Controller
         return Inertia::render('student/Adaptive/MyChallenges', [
             'quizzes' => $quizzes,
             'strategies' => $strategies,
+        ]);
+    }
+
+    /**
+     * Toggle quiz visibility (public/private)
+     */
+    public function toggleVisibility(Request $request, Quiz $quiz)
+    {
+        $user = $this->user();
+
+        // Verify the user owns this quiz
+        if ($quiz->created_by !== $user->id) {
+            abort(403, 'You can only modify quizzes you created.');
+        }
+
+        $assignment = $quiz->adaptiveAssignment;
+        if (! $assignment) {
+            abort(404, 'Adaptive quiz assignment not found.');
+        }
+
+        $assignment->update([
+            'is_public' => ! $assignment->is_public,
+        ]);
+
+        if ($this->wantsInertiaResponse($request)) {
+            return redirect()
+                ->back()
+                ->with('success', $assignment->is_public
+                    ? 'Quiz is now public and visible in Browse.'
+                    : 'Quiz is now private and only visible to you.');
+        }
+
+        return response()->json([
+            'success' => true,
+            'is_public' => $assignment->is_public,
         ]);
     }
 }

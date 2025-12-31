@@ -19,6 +19,7 @@ interface Quiz {
     time_limit_minutes: number | null;
     subject: Subject | null;
     questions: Array<{ id: number }>;
+    total_questions?: number;
 }
 
 interface Props {
@@ -83,9 +84,20 @@ export default function QuizShow({ quiz }: Props) {
                         </div>
 
                         <form onSubmit={handleStart} className="space-y-4">
-                            <Button type="submit" className="w-full" size="lg">
+                            <Button
+                                type="submit"
+                                className="w-full"
+                                size="lg"
+                                disabled={
+                                    quiz.questions.length === 0 ||
+                                    quiz.total_questions === 0
+                                }
+                            >
                                 <Play className="mr-2 h-5 w-5" />
-                                Start Quiz
+                                {quiz.questions.length === 0 ||
+                                quiz.total_questions === 0
+                                    ? "No Questions Available"
+                                    : "Start Quiz"}
                             </Button>
                         </form>
 

@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { route } from "ziggy-js";
-import { Check, ChevronLeft, ChevronRight, DoorOpen, X } from "lucide-react";
+import {
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    DoorOpen,
+    X,
+    Flag,
+} from "lucide-react";
 import { SubjectBadge } from "@/components/common/SubjectBadge";
 
 interface Subject {
@@ -32,9 +39,10 @@ interface Attempt {
 interface Props {
     attempt: Attempt;
     question: Question;
-    questionIndex: number;
+    questionIndex: string;
     questions: Array<{ id: number }>;
     selectedAnswer?: string;
+    isFlagged?: boolean;
 }
 
 export default function QuizTake({
@@ -43,20 +51,22 @@ export default function QuizTake({
     questionIndex,
     questions,
     selectedAnswer = "",
+    isFlagged = false,
 }: Props) {
     const form = useForm({
         answer: selectedAnswer,
     });
 
-    const isFirstQuestion = questionIndex === 0;
-    const isLastQuestion = questionIndex === questions.length - 1;
+    const qIndex = Number(questionIndex);
+    const isFirstQuestion = qIndex === 0;
+    const isLastQuestion = qIndex === questions.length - 1;
 
     const handleNext = (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.data.answer) return;
 
         form.post(
-            route("student.attempts.submit.single", [attempt.id, questionIndex])
+            route("student.attempts.submit.single", [attempt.id, qIndex])
         );
     };
 
@@ -65,17 +75,14 @@ export default function QuizTake({
         if (!form.data.answer) return;
 
         form.post(
-            route("student.attempts.submit.single", [attempt.id, questionIndex])
+            route("student.attempts.submit.single", [attempt.id, qIndex])
         );
     };
 
     const handlePrevious = () => {
-        if (questionIndex > 0) {
+        if (qIndex > 0) {
             router.visit(
-                route("student.attempts.take.single", [
-                    attempt.id,
-                    questionIndex - 1,
-                ])
+                route("student.attempts.take.single", [attempt.id, qIndex - 1])
             );
         }
     };
@@ -86,17 +93,52 @@ export default function QuizTake({
             <div className="max-w-3xl mx-auto">
                 <div className="text-center mb-6">
                     <p className="text-lg font-semibold">
-                        Question {questionIndex + 1} / {questions.length}
+                        Question {qIndex + 1} / {questions.length}
                     </p>
                 </div>
 
                 <Card>
                     <CardHeader>
-                        {question.subject && (
-                            <div className="mb-2">
+                        <div className="flex items-start justify-between mb-2">
+                            {question.subject && (
                                 <SubjectBadge subject={question.subject} />
-                            </div>
-                        )}
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                    if (isFlagged) {
+                                        router.delete(
+                                            route(
+                                                "student.questions.unflag",
+                                                question.id
+                                            ),
+                                            { preserveScroll: true }
+                                        );
+                                    } else {
+                                        router.post(
+                                            route(
+                                                "student.questions.flag",
+                                                question.id
+                                            ),
+                                            {},
+                                            { preserveScroll: true }
+                                        );
+                                    }
+                                }}
+                                className={
+                                    isFlagged
+                                        ? "text-yellow-500 hover:text-yellow-600"
+                                        : "text-muted-foreground hover:text-yellow-500"
+                                }
+                            >
+                                <Flag
+                                    className={`h-5 w-5 ${
+                                        isFlagged ? "fill-current" : ""
+                                    }`}
+                                />
+                            </Button>
+                        </div>
                         <CardTitle className="text-xl">
                             {question.question_text}
                         </CardTitle>

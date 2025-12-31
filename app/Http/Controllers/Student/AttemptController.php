@@ -27,10 +27,67 @@ class AttemptController extends Controller
             abort(403);
         }
 
-        $attempt->load('quiz');
-        $answers = $attempt->answers()
+        $attempt->load(['quiz']);
+
+        // Load all quiz questions to ensure we have all questions even if not answered
+        $quiz = $attempt->quiz()->with('questions.options', 'questions.subject')->first();
+        $allQuestions = $quiz->questions->keyBy('id');
+
+        // Get all answers for this attempt with question relationships
+        $allAnswers = $attempt->answers()
             ->with(['question.options', 'question.subject'])
-            ->paginate(5);
+            ->get()
+            ->keyBy('question_id');
+
+        // Get flagged question IDs for current user
+        $user = $this->user();
+        $flaggedQuestionIds = $user
+            ->flaggedQuestions()
+            ->pluck('question_id')
+            ->toArray();
+
+        // Combine questions with answers, ensuring all questions are included
+        $combined = $allQuestions->map(function ($question) use ($allAnswers, $flaggedQuestionIds) {
+            $answer = $allAnswers->get($question->id);
+
+            return [
+                'id' => $answer ? $answer->id : null,
+                'question_id' => $question->id,
+                'question' => [
+                    'id' => $question->id,
+                    'question_text' => $question->question_text,
+                    'subject' => $question->subject ? [
+                        'id' => $question->subject->id,
+                        'name' => $question->subject->name,
+                    ] : null,
+                    'options' => $question->options->map(function ($option) {
+                        return [
+                            'id' => $option->id,
+                            'option_text' => $option->option_text,
+                            'is_correct' => $option->is_correct,
+                        ];
+                    })->toArray(),
+                    'explanations' => $question->explanations,
+                ],
+                'selected_option_id' => $answer ? $answer->selected_option_id : null,
+                'is_correct' => $answer ? $answer->is_correct : null,
+                'is_flagged' => in_array($question->id, $flaggedQuestionIds),
+            ];
+        })->values();
+
+        // Paginate the combined results
+        $perPage = 5;
+        $currentPage = request()->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $items = $combined->slice($offset, $perPage)->values();
+
+        $answers = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $combined->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
 
         return Inertia::render('student/Attempts/Show', [
             'attempt' => $attempt,
@@ -44,23 +101,13 @@ class AttemptController extends Controller
             abort(403);
         }
 
-        // Don't allow resuming completed quizzes
-        if ($attempt->ended_at) {
-            return redirect()->route('student.attempts.show', $attempt->id)
-                ->with('info', 'This quiz has already been completed.');
-        }
-
-        // Load the quiz and its questions, and the attempt's answers
-        $attempt->load('answers');
+        // Load the quiz and its questions
         $quiz = $attempt->quiz()->with('questions.options')->first();
         $questions = $quiz->questions;
 
-        // Get answered question IDs
-        $answeredQuestionIds = $attempt->answers->pluck('question_id')->toArray();
-
         // Find the next unanswered question
-        $nextIndex = $questions->search(function ($question) use ($answeredQuestionIds) {
-            return ! in_array($question->id, $answeredQuestionIds);
+        $nextIndex = $questions->search(function ($question) use ($attempt) {
+            return ! $attempt->answers->contains('question_id', $question->id);
         });
 
         // If all questions are answered, mark as finished

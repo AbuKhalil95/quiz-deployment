@@ -39,12 +39,16 @@ class QuizController extends Controller
         $existingAnswer = $attempt->answers()->where('question_id', $question->id)->first();
         $selectedAnswer = $existingAnswer ? (string) $existingAnswer->selected_option_id : '';
 
+        // Check if question is flagged by current user
+        $isFlagged = Auth::user()->flaggedQuestions()->where('question_id', $question->id)->exists();
+
         return \Inertia\Inertia::render('student/Quizzes/Take', [
             'attempt' => $attempt,
             'question' => $question,
             'questionIndex' => $questionIndex,
             'questions' => $questions->map(fn ($q) => ['id' => $q->id]),
             'selectedAnswer' => $selectedAnswer,
+            'isFlagged' => $isFlagged,
         ]);
     }
 
@@ -110,7 +114,15 @@ class QuizController extends Controller
         $quiz->load('subject', 'questions:id');
 
         return \Inertia\Inertia::render('student/Quizzes/Show', [
-            'quiz' => $quiz,
+            'quiz' => [
+                'id' => $quiz->id,
+                'title' => $quiz->title,
+                'mode' => $quiz->mode,
+                'time_limit_minutes' => $quiz->time_limit_minutes,
+                'subject' => $quiz->subject,
+                'questions' => $quiz->questions->map(fn ($q) => ['id' => $q->id]),
+                'total_questions' => $quiz->total_questions,
+            ],
         ]);
     }
 
@@ -120,6 +132,14 @@ class QuizController extends Controller
     public function start(Request $request, Quiz $quiz)
     {
         $user = Auth::user();
+
+        // Check if quiz has questions - check both total_questions and relationship
+        $quiz->load('questions');
+        if ($quiz->total_questions === 0 || $quiz->questions->isEmpty()) {
+            // Always use Inertia redirect for student routes (they're all Inertia now)
+            return redirect()->back()
+                ->with('error', 'This quiz has no questions and cannot be started.');
+        }
 
         // create new attempt
         $attempt = QuizAttempt::create([

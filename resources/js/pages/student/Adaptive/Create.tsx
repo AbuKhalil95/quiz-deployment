@@ -39,6 +39,7 @@ export default function Create({ subjects }: Props) {
         subject_ids: [] as number[],
         title: "",
         time_limit_minutes: "",
+        is_public: false,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -262,6 +263,37 @@ export default function Create({ subjects }: Props) {
                                 />
                                 <InputError
                                     message={form.errors.title}
+                                    className="mt-1"
+                                />
+                            </div>
+
+                            {/* Public/Private */}
+                            <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="is_public"
+                                        checked={form.data.is_public}
+                                        onCheckedChange={(checked) =>
+                                            form.setData(
+                                                "is_public",
+                                                checked === true
+                                            )
+                                        }
+                                    />
+                                    <Label
+                                        htmlFor="is_public"
+                                        className="cursor-pointer font-normal"
+                                    >
+                                        Make this quiz public
+                                    </Label>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Public quizzes appear in Browse for everyone
+                                    to take. Private quizzes are only visible to
+                                    you in My Challenges.
+                                </p>
+                                <InputError
+                                    message={form.errors.is_public}
                                     className="mt-1"
                                 />
                             </div>

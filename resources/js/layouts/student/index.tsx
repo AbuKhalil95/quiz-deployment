@@ -11,6 +11,8 @@ import { route } from "ziggy-js";
 import { usePage } from "@inertiajs/react";
 import { User } from "lucide-react";
 import { SharedData } from "@/types";
+import Messages from "@/components/messages";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface StudentLayoutProps extends PropsWithChildren {
     title?: string;
@@ -34,6 +36,7 @@ export default function StudentLayout({
     return (
         <>
             <Head title={title} />
+            <Messages />
             <div className="min-h-screen bg-background">
                 {/* Header */}
                 <header className="border-b bg-card">
@@ -45,7 +48,8 @@ export default function StudentLayout({
                             HKMLE Quiz Practice
                         </Link>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <ThemeToggle />
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button

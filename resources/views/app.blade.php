@@ -12,6 +12,21 @@
     @inertiaHead
 </head>
 <body class="font-sans antialiased">
+    <script>
+        // Initialize theme before React loads to prevent flash
+        (function() {
+            const stored = localStorage.getItem('theme');
+            const root = document.documentElement;
+            if (stored === 'dark') {
+                root.classList.add('dark');
+            } else if (stored === 'light') {
+                root.classList.add('light');
+            } else {
+                const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                root.classList.add(systemTheme);
+            }
+        })();
+    </script>
     @inertia
 </body>
 </html>

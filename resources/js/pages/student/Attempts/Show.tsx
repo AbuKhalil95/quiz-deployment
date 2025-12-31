@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { route } from "ziggy-js";
-import { CheckCircle2, XCircle, Circle } from "lucide-react";
+import { CheckCircle2, XCircle, Circle, Flag } from "lucide-react";
 import { SmartPagination } from "@/components/common/SmartPagination";
 import { SubjectBadge } from "@/components/common/SubjectBadge";
 
@@ -27,10 +27,12 @@ interface Question {
 }
 
 interface Answer {
-    id: number;
+    id: number | null;
+    question_id: number;
     selected_option_id: number | null;
-    is_correct: boolean;
+    is_correct: boolean | null;
     question: Question;
+    is_flagged?: boolean;
 }
 
 interface Quiz {
@@ -118,77 +120,143 @@ export default function AttemptsShow({ attempt, answers }: Props) {
                 </div>
 
                 <div className="space-y-4">
-                    {answers.data.map((answer, aIndex) => {
-                        const question = answer.question;
-                        const selectedId = answer.selected_option_id;
+                    {answers.data.length === 0 ? (
+                        <Card>
+                            <CardContent className="py-8 text-center">
+                                <p className="text-muted-foreground">
+                                    No questions found for this quiz attempt.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        answers.data.map((answer, aIndex) => {
+                            const question = answer.question;
+                            if (!question) {
+                                return null; // Skip if question is missing
+                            }
+                            const selectedId = answer.selected_option_id;
 
-                        return (
-                            <Card key={answer.id}>
-                                <CardHeader>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        {question.subject && (
-                                            <SubjectBadge
-                                                subject={question.subject}
-                                            />
-                                        )}
-                                    </div>
-                                    <CardTitle>
-                                        Q{answers.from + aIndex}.{" "}
-                                        {question.question_text}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-2">
-                                    {question.options.map((option) => {
-                                        const isSelected =
-                                            option.id === selectedId;
-                                        const isCorrect = option.is_correct;
-
-                                        return (
-                                            <div
-                                                key={option.id}
-                                                className="flex items-center gap-2 p-2 rounded border"
+                            return (
+                                <Card
+                                    key={
+                                        answer.id ||
+                                        `question-${answer.question_id}`
+                                    }
+                                >
+                                    <CardHeader>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                {question.subject && (
+                                                    <SubjectBadge
+                                                        subject={
+                                                            question.subject
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    if (answer.is_flagged) {
+                                                        router.delete(
+                                                            route(
+                                                                "student.questions.unflag",
+                                                                question.id
+                                                            ),
+                                                            {
+                                                                preserveScroll:
+                                                                    true,
+                                                            }
+                                                        );
+                                                    } else {
+                                                        router.post(
+                                                            route(
+                                                                "student.questions.flag",
+                                                                question.id
+                                                            ),
+                                                            {},
+                                                            {
+                                                                preserveScroll:
+                                                                    true,
+                                                            }
+                                                        );
+                                                    }
+                                                }}
+                                                className={
+                                                    answer.is_flagged
+                                                        ? "text-yellow-500 hover:text-yellow-600"
+                                                        : "text-muted-foreground hover:text-yellow-500"
+                                                }
                                             >
-                                                <span>
-                                                    {isCorrect ? (
-                                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                                    ) : isSelected &&
-                                                      !isCorrect ? (
-                                                        <XCircle className="h-5 w-5 text-red-600" />
-                                                    ) : (
-                                                        <Circle className="h-5 w-5 text-muted-foreground" />
-                                                    )}
-                                                </span>
-                                                <span
-                                                    className={`flex-1 ${
-                                                        isSelected || isCorrect
-                                                            ? "font-bold"
-                                                            : ""
-                                                    } ${
-                                                        isCorrect
-                                                            ? "text-green-600"
-                                                            : isSelected &&
-                                                              !isCorrect
-                                                            ? "text-red-600"
+                                                <Flag
+                                                    className={`h-5 w-5 ${
+                                                        answer.is_flagged
+                                                            ? "fill-current"
                                                             : ""
                                                     }`}
+                                                />
+                                            </Button>
+                                        </div>
+                                        <CardTitle>
+                                            Q{answers.from + aIndex}.{" "}
+                                            {question.question_text}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        {question.options.map((option) => {
+                                            const isSelected =
+                                                option.id === selectedId;
+                                            const isCorrect = option.is_correct;
+
+                                            return (
+                                                <div
+                                                    key={option.id}
+                                                    className="flex items-center gap-2 p-2 rounded border"
                                                 >
-                                                    {option.option_text}
-                                                    {isCorrect ? (
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="ml-2 text-green-600"
-                                                        >
-                                                            Correct
-                                                        </Badge>
-                                                    ) : null}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
+                                                    <span>
+                                                        {isCorrect ? (
+                                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                                        ) : isSelected &&
+                                                          !isCorrect ? (
+                                                            <XCircle className="h-5 w-5 text-red-600" />
+                                                        ) : (
+                                                            <Circle className="h-5 w-5 text-muted-foreground" />
+                                                        )}
+                                                    </span>
+                                                    <span
+                                                        className={`flex-1 ${
+                                                            isSelected ||
+                                                            isCorrect
+                                                                ? "font-bold"
+                                                                : ""
+                                                        } ${
+                                                            isCorrect
+                                                                ? "text-green-600"
+                                                                : isSelected &&
+                                                                  !isCorrect
+                                                                ? "text-red-600"
+                                                                : ""
+                                                        }`}
+                                                    >
+                                                        {option.option_text}
+                                                        {isCorrect ? (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="ml-2 text-green-600"
+                                                            >
+                                                                Correct
+                                                            </Badge>
+                                                        ) : null}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </CardContent>
+                                </Card>
+                            );
+                        })
+                    )}
                 </div>
 
                 {answers.last_page > 1 && (
