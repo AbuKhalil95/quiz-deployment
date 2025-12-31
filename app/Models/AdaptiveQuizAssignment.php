@@ -30,4 +30,20 @@ class AdaptiveQuizAssignment extends Model
     {
         return $this->belongsTo(User::class, 'target_student_id');
     }
+
+    /**
+     * Scope for quizzes targeting a specific student
+     */
+    public function scopeForStudent($query, $studentId)
+    {
+        return $query->where('target_student_id', $studentId);
+    }
+
+    /**
+     * Scope for quizzes available to challenge (exclude own)
+     */
+    public function scopeAvailableFor($query, $studentId)
+    {
+        return $query->where('target_student_id', '!=', $studentId);
+    }
 }

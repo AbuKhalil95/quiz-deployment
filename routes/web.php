@@ -12,6 +12,7 @@ use App\Http\Controllers\QuizController; // ADMIN quiz controller
 use App\Http\Controllers\QuizQuestionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoleUserController;
+use App\Http\Controllers\Student\AdaptiveQuizController;
 use App\Http\Controllers\Student\AttemptController;
 use App\Http\Controllers\Student\DashboardController;
 use App\Http\Controllers\Student\QuizController as StudentQuizController;
@@ -183,4 +184,19 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('attempts/{attempt}/resume', [AttemptController::class, 'resume'])
         ->name('student.attempts.resume');
+
+    // Adaptive Quiz Routes
+    Route::prefix('student/quizzes/adaptive')->name('student.adaptive.')->group(function () {
+        Route::get('/create', [AdaptiveQuizController::class, 'create'])
+            ->name('create');
+        Route::post('/generate', [AdaptiveQuizController::class, 'generate'])
+            ->name('generate');
+        Route::get('/', [AdaptiveQuizController::class, 'index'])
+            ->name('index');
+        Route::get('/my-challenges', [AdaptiveQuizController::class, 'myChallenges'])
+            ->name('myChallenges');
+    });
+
+    Route::get('/student/quizzes/{quiz}/leaderboard', [AdaptiveQuizController::class, 'leaderboard'])
+        ->name('student.quizzes.leaderboard');
 });

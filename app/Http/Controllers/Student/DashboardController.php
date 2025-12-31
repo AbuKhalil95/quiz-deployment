@@ -13,13 +13,17 @@ class DashboardController extends Controller
     public function index()
     {
         $subjects = Subject::whereHas('quizzes.questions')->paginate(6);
+        $mixedBagQuizzes = Quiz::where('mode', 'mixed_bag')
+            ->whereHas('questions')
+            ->with('subject')
+            ->get();
         $lastAttempts = QuizAttempt::with('quiz')
             ->where('student_id', Auth::id())
             ->orderByDesc('created_at')
             ->take(3)
             ->get();
 
-        return view('student.dashboard', compact('subjects', 'lastAttempts'));
+        return view('student.dashboard', compact('subjects', 'mixedBagQuizzes', 'lastAttempts'));
     }
 
     public function quizzesBySubject($subjectId)
@@ -28,7 +32,7 @@ class DashboardController extends Controller
         $quizzes = Quiz::where('subject_id', $subjectId)
             ->whereHas('questions')
             ->paginate(6);
+
         return view('student.quizzes-by-subject', compact('subject', 'quizzes'));
     }
-
 }

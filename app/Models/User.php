@@ -69,4 +69,9 @@ class User extends Authenticatable
             })
             ->exists();
     }
+
+    public function adaptiveQuizzes()
+    {
+        return $this->hasMany(AdaptiveQuizAssignment::class, 'target_student_id');
+    }
 }

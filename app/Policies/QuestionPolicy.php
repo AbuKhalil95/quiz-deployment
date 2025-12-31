@@ -12,7 +12,8 @@ class QuestionPolicy
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        // Admins and teachers can view all questions
+        return $user->hasRole('admin') || $user->hasRole('teacher');
     }
 
     /**
@@ -20,7 +21,8 @@ class QuestionPolicy
      */
     public function view(User $user, Question $question): bool
     {
-        return false;
+        // Admins and teachers can view all questions
+        return $user->hasRole('admin') || $user->hasRole('teacher');
     }
 
     /**
@@ -28,7 +30,8 @@ class QuestionPolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        // Admins and teachers can create questions
+        return $user->hasRole('admin') || $user->hasRole('teacher');
     }
 
     /**
@@ -36,6 +39,30 @@ class QuestionPolicy
      */
     public function update(User $user, Question $question): bool
     {
+        // Admins can update any question
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        // Teachers can update if:
+        // 1. They created it and it's unassigned (initial state)
+        // 2. They are assigned to it and it's not done
+        $isAssignedToSelf = $question->assigned_to === $user->id;
+        $isDone = $question->state === Question::STATE_DONE;
+        $isUnassigned = ! $question->assigned_to;
+        $isInitial = $question->state === Question::STATE_INITIAL;
+        $isCreator = $question->created_by === $user->id;
+
+        // Can edit if assigned to self and not done
+        if ($isAssignedToSelf && ! $isDone) {
+            return true;
+        }
+
+        // Can edit if created by self and unassigned in initial state
+        if ($isCreator && $isUnassigned && $isInitial) {
+            return true;
+        }
+
         return false;
     }
 
@@ -44,7 +71,13 @@ class QuestionPolicy
      */
     public function delete(User $user, Question $question): bool
     {
-        return false;
+        // Admins can delete any question
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        // Teachers can only delete questions they created
+        return $question->created_by === $user->id;
     }
 
     /**
@@ -60,6 +93,6 @@ class QuestionPolicy
      */
     public function forceDelete(User $user, Question $question): bool
     {
-        return false;
+        return $this->delete($user, $question);
     }
 }

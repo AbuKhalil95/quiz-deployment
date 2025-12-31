@@ -1,9 +1,13 @@
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
+import { useRef, useState } from "react";
 import AdminLayout from "@/layouts/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { QuestionForm } from "./_components/QuestionForm";
+import { useQuestionActions } from "@/hooks/useQuestionActions";
+import { useQuestionActionHandlers } from "@/hooks/useQuestionActionHandlers";
+import { QuestionActions } from "@/components/common/QuestionActions";
 
 interface Subject {
     id: number;
@@ -45,6 +49,25 @@ interface Props {
 }
 
 export default function Edit({ question, subjects, tags }: Props) {
+    const { auth } = usePage().props as any;
+    const currentUser = auth?.user;
+    const formRef = useRef<HTMLDivElement>(null);
+    const [approveOnSubmit, setApproveOnSubmit] = useState(false);
+
+    const handlers = useQuestionActionHandlers({
+        reloadOnSuccess: true,
+        formRef,
+        approveOnSubmit,
+        setApproveOnSubmit,
+    });
+
+    const actions = useQuestionActions({
+        question,
+        currentUser,
+        context: "edit",
+        handlers,
+    });
+
     return (
         <AdminLayout
             breadcrumbs={[
@@ -58,13 +81,14 @@ export default function Edit({ question, subjects, tags }: Props) {
         >
             <Head title={`Edit Question ${question.id}`} />
             <div className="p-6">
-                <div className="mb-4">
+                <div className="mb-4 flex items-center justify-between">
                     <Button variant="outline" asChild>
                         <Link href={route("admin.questions.index")}>
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Back to Questions
                         </Link>
                     </Button>
+                    <QuestionActions actions={actions} />
                 </div>
 
                 <Card>
@@ -72,11 +96,16 @@ export default function Edit({ question, subjects, tags }: Props) {
                         <CardTitle>Edit Question</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <QuestionForm
-                            question={question}
-                            subjects={subjects}
-                            tags={tags}
-                        />
+                        <div ref={formRef as any}>
+                            <QuestionForm
+                                question={question}
+                                subjects={subjects}
+                                tags={tags}
+                                showActions={false}
+                                approveOnSubmit={approveOnSubmit}
+                                onApproveSubmitChange={setApproveOnSubmit}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
             </div>

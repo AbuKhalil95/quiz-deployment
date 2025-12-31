@@ -1,0 +1,15 @@
+---
+description: CRITICAL - Docker commands only. Never run commands on host.
+alwaysApply: true
+---
+
+# ⚠️ DOCKER ONLY - Never run commands on host
+
+**ALWAYS use:**
+
+-   `docker-compose exec app php artisan [cmd]`
+-   `docker-compose exec app composer [cmd]`
+-   `docker-compose exec app npm [cmd]`
+-   DB host: `db` (not localhost)
+
+**Services:** app=quiz_app, db=quizzes_db, nginx=quizzes_nginx

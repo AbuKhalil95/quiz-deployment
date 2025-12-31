@@ -121,6 +121,7 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::get('/admin/quizzes/create', [QuizController::class, 'createForm'])->name('admin.quizzes.createForm');
     Route::post('/admin/quizzes', [QuizController::class, 'create'])->name('admin.quizzes.create');
     Route::delete('/admin/quizzes/bulk', [QuizController::class, 'bulkDestroy'])->name('admin.quizzes.bulkDestroy');
+    Route::get('/admin/quizzes/adaptive', [QuizController::class, 'adaptiveQuizzes'])->name('admin.quizzes.adaptive');
 
     Route::middleware('can.access:quiz')->group(function () {
         Route::get('/admin/quizzes/{id}', [QuizController::class, 'show'])->name('admin.quizzes.show');

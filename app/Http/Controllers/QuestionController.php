@@ -321,6 +321,16 @@ class QuestionController extends Controller
                         ];
                     }),
                     'explanations' => $question->explanations,
+                    'creator' => $question->creator ? [
+                        'id' => $question->creator->id,
+                        'name' => $question->creator->name,
+                        'roles' => $question->creator->roles->map(function ($role) {
+                            return [
+                                'id' => $role->id,
+                                'name' => $role->name,
+                            ];
+                        }),
+                    ] : null,
                     'state_history' => $question->stateHistory->map(function ($history) {
                         return [
                             'id' => $history->id,
@@ -390,15 +400,8 @@ class QuestionController extends Controller
             abort(404, 'Question not found');
         }
 
-        // Authorization: Can only edit if assigned to self and not done, or if admin
-        if (! $user->hasRole('admin')) {
-            $isAssignedToSelf = $question->assigned_to === $user->id;
-            $isDone = $question->state === Question::STATE_DONE;
-
-            if (! $isAssignedToSelf || $isDone) {
-                abort(403, 'You can only edit questions assigned to you that are not in done state. Please assign the question to yourself first or reset it if it is done.');
-            }
-        }
+        // Use Policy for authorization
+        $this->authorize('update', $question);
 
         if ($this->wantsInertiaResponse(request())) {
             return \Inertia\Inertia::render('admin/Questions/Edit', [
@@ -440,17 +443,8 @@ class QuestionController extends Controller
             abort(404, 'Question not found');
         }
 
-        // Authorization: Can only update if assigned to self and not done, or if admin
-        if (! $user->hasRole('admin')) {
-            $isAssignedToSelf = $question->assigned_to === $user->id;
-            $isDone = $question->state === Question::STATE_DONE;
-
-            if (! $isAssignedToSelf || $isDone) {
-                return back()->withErrors([
-                    'message' => 'You can only update questions assigned to you that are not in done state. Please assign the question to yourself first or reset it if it is done.',
-                ])->withInput();
-            }
-        }
+        // Use Policy for authorization
+        $this->authorize('update', $question);
 
         $request->validate([
             'subject_id' => 'required|exists:subjects,id',
@@ -784,6 +778,13 @@ class QuestionController extends Controller
 
         if ($question->assignTo($user->id)) {
             if ($this->wantsInertiaResponse($request)) {
+                // If coming from show/edit page, redirect back; otherwise go to index
+                if ($this->shouldRedirectBack($request, $id)) {
+                    return redirect()
+                        ->route('admin.questions.show', $id)
+                        ->with('success', 'Question assigned successfully');
+                }
+
                 return redirect()
                     ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
                     ->with('success', 'Question assigned successfully');
@@ -966,6 +967,13 @@ class QuestionController extends Controller
 
         if ($question->unassign($user->id)) {
             if ($this->wantsInertiaResponse($request)) {
+                // If coming from show/edit page, redirect back; otherwise go to index
+                if ($this->shouldRedirectBack($request, $id)) {
+                    return redirect()
+                        ->route('admin.questions.show', $id)
+                        ->with('success', 'Question unassigned successfully');
+                }
+
                 return redirect()
                     ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
                     ->with('success', 'Question unassigned successfully');
@@ -1017,6 +1025,13 @@ class QuestionController extends Controller
 
         if ($question->changeState($request->state, $request->notes ?? null)) {
             if ($this->wantsInertiaResponse($request)) {
+                // If coming from show/edit page, redirect back; otherwise go to index
+                if ($this->shouldRedirectBack($request, $id)) {
+                    return redirect()
+                        ->route('admin.questions.show', $id)
+                        ->with('success', 'Question state updated successfully');
+                }
+
                 return redirect()
                     ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
                     ->with('success', 'Question state updated successfully');
@@ -1077,6 +1092,13 @@ class QuestionController extends Controller
                 $message = $assignToUserId
                     ? 'Question reset to initial state and assigned to you successfully'
                     : 'Question reset to initial state successfully';
+
+                // If coming from show/edit page, redirect back; otherwise go to index
+                if ($this->shouldRedirectBack($request, $id)) {
+                    return redirect()
+                        ->route('admin.questions.show', $id)
+                        ->with('success', $message);
+                }
 
                 return redirect()
                     ->route('admin.questions.index', $request->only(['tab', 'search', 'subject_id', 'page']))
@@ -1416,5 +1438,23 @@ class QuestionController extends Controller
                 ];
             })->toArray(),
         ]);
+    }
+
+    /**
+     * Check if request is coming from show or edit page
+     * If so, we should redirect back to that page instead of index
+     */
+    private function shouldRedirectBack(Request $request, int $questionId): bool
+    {
+        $referer = $request->header('referer');
+        if (! $referer) {
+            return false;
+        }
+
+        // Check if referer contains the show or edit route for this question
+        $showUrl = route('admin.questions.show', $questionId, false);
+        $editUrl = route('admin.questions.edit', $questionId, false);
+
+        return str_contains($referer, $showUrl) || str_contains($referer, $editUrl);
     }
 }

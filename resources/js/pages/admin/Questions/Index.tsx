@@ -15,21 +15,22 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { QuestionStatusBadge } from "@/components/common/QuestionStatusBadge";
 import {
     Plus,
-    Eye,
-    Pencil,
-    Trash2,
-    CheckCircle,
-    Clock,
     X,
-    UserMinus,
-    UserPlus,
     FileUp,
+    UserPlus,
+    CheckCircle,
+    Trash2,
+    Clock,
 } from "lucide-react";
 import { DeleteQuestionDialog } from "./_components/DeleteQuestionDialog";
 import { SmartPagination } from "@/components/common/SmartPagination";
 import { ImportQuestionsDialog } from "./_components/ImportQuestionsDialog";
+import { useQuestionActions } from "@/hooks/useQuestionActions";
+import { useQuestionActionHandlers } from "@/hooks/useQuestionActionHandlers";
+import { QuestionActions } from "@/components/common/QuestionActions";
 interface Subject {
     id: number;
     name: string;
@@ -205,18 +206,21 @@ export default function Index({ questions, subjects, filters }: Props) {
     const [selectAllMode, setSelectAllMode] = useState(false);
     const [allFilteredIds, setAllFilteredIds] = useState<number[]>([]);
 
-    const handleView = (question: Question) => {
-        router.visit(`/admin/questions/${question.id}`);
-    };
+    const handlers = useQuestionActionHandlers({
+        preserveFilters: {
+            tab: activeTab,
+            search,
+            subject_id: selectedSubjectId,
+            page: questions.current_page,
+        },
+    });
 
-    const handleEdit = (question: Question) => {
-        router.visit(`/admin/questions/${question.id}/edit`);
-    };
-
-    const handleDelete = (question: Question) => {
-        setSelectedQuestion(question);
+    // Override delete to show dialog
+    const handleDelete = (question: { id: number; [key: string]: any }) => {
+        setSelectedQuestion(question as Question);
         setDeleteDialogOpen(true);
     };
+    handlers.onDelete = handleDelete as typeof handlers.onDelete;
 
     const handleDeleteSuccess = () => {
         // Preserve current URL with filters and page to maintain scroll and state
@@ -249,54 +253,6 @@ export default function Index({ questions, subjects, filters }: Props) {
             }
             router.get(urlObj.pathname + urlObj.search);
         }
-    };
-
-    const handleAssign = (questionId: number) => {
-        // Build query parameters to preserve current page and filters
-        const params: any = {};
-        if (activeTab && activeTab !== "all") {
-            params.tab = activeTab;
-        }
-        if (search) {
-            params.search = search;
-        }
-        if (selectedSubjectId) {
-            params.subject_id = selectedSubjectId;
-        }
-        if (questions.current_page > 1) {
-            params.page = questions.current_page;
-        }
-
-        router.post(`/admin/questions/${questionId}/assign`, params, {
-            preserveScroll: true,
-            preserveState: true,
-            // Backend will use these params in the redirect
-        });
-    };
-
-    const handleChangeState = (questionId: number, newState: string) => {
-        // Build query parameters to preserve current page and filters
-        const params: any = {
-            state: newState,
-        };
-        if (activeTab && activeTab !== "all") {
-            params.tab = activeTab;
-        }
-        if (search) {
-            params.search = search;
-        }
-        if (selectedSubjectId) {
-            params.subject_id = selectedSubjectId;
-        }
-        if (questions.current_page > 1) {
-            params.page = questions.current_page;
-        }
-
-        router.post(`/admin/questions/${questionId}/change-state`, params, {
-            preserveScroll: true,
-            preserveState: true,
-            // Backend will use these params in the redirect
-        });
     };
 
     const toggleSelect = (id: number) => {
@@ -460,52 +416,6 @@ export default function Index({ questions, subjects, filters }: Props) {
         });
     };
 
-    const handleUnassign = (questionId: number) => {
-        // Build query parameters to preserve current page and filters
-        const params: any = {};
-        if (activeTab && activeTab !== "all") {
-            params.tab = activeTab;
-        }
-        if (search) {
-            params.search = search;
-        }
-        if (selectedSubjectId) {
-            params.subject_id = selectedSubjectId;
-        }
-        if (questions.current_page > 1) {
-            params.page = questions.current_page;
-        }
-
-        router.post(`/admin/questions/${questionId}/unassign`, params, {
-            preserveScroll: true,
-            preserveState: true,
-            // Backend will use these params in the redirect
-        });
-    };
-
-    const handleResetToInitial = (questionId: number) => {
-        // Build query parameters to preserve current page and filters
-        const params: any = {};
-        if (activeTab && activeTab !== "all") {
-            params.tab = activeTab;
-        }
-        if (search) {
-            params.search = search;
-        }
-        if (selectedSubjectId) {
-            params.subject_id = selectedSubjectId;
-        }
-        if (questions.current_page > 1) {
-            params.page = questions.current_page;
-        }
-
-        router.post(`/admin/questions/${questionId}/reset-to-initial`, params, {
-            preserveScroll: true,
-            preserveState: true,
-            // Backend will use these params in the redirect
-        });
-    };
-
     const renderQuestionsTable = (questionsData: any) => {
         const showAssignedTo = activeTab !== "my-review";
         const colSpan = showAssignedTo ? 8 : 7;
@@ -565,132 +475,19 @@ export default function Index({ questions, subjects, filters }: Props) {
                 )}
                 {question.state && (
                     <TableCell>
-                        <span
-                            className={`text-xs px-2 py-0.5 rounded ${
-                                question.state === "initial"
-                                    ? "bg-gray-200"
-                                    : question.state === "under-review"
-                                    ? "bg-yellow-200"
-                                    : "bg-green-200"
-                            }`}
-                        >
-                            {question.state === "initial"
-                                ? "Unassigned"
-                                : question.state === "under-review"
-                                ? "Under Review"
-                                : "Done"}
-                        </span>
+                        <QuestionStatusBadge state={question.state} as="span" />
                     </TableCell>
                 )}
                 <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                        {/* Always show View button */}
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleView(question)}
-                        >
-                            <Eye className="h-4 w-4" />
-                        </Button>
-
-                        {/* Assign to Self button: Show first if question is not assigned to self and can be assigned */}
-                        {question.assigned_to !== currentUser?.id &&
-                            question.state === "initial" &&
-                            ((question.creator?.roles?.some(
-                                (r) => r.name === "admin"
-                            ) &&
-                                currentUser?.roles?.includes("teacher")) ||
-                                question.creator?.id === currentUser?.id ||
-                                currentUser?.roles?.includes("admin")) && (
-                                <Button
-                                    variant="default"
-                                    size="sm"
-                                    onClick={() => handleAssign(question.id)}
-                                >
-                                    Assign to Me
-                                </Button>
-                            )}
-
-                        {/* Edit button: Only show when assigned to self and not done (includes initial state after reset) */}
-                        {question.assigned_to === currentUser?.id &&
-                            question.state !== "done" && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEdit(question)}
-                                >
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
-                            )}
-
-                        {/* Reset to Initial button: Show when done and (assigned to self OR can be assigned) */}
-                        {question.state === "done" &&
-                            (question.assigned_to === currentUser?.id ||
-                                (question.assigned_to !== currentUser?.id &&
-                                    ((question.creator?.roles?.some(
-                                        (r) => r.name === "admin"
-                                    ) &&
-                                        currentUser?.roles?.includes(
-                                            "teacher"
-                                        )) ||
-                                        question.creator?.id ===
-                                            currentUser?.id ||
-                                        currentUser?.roles?.includes(
-                                            "admin"
-                                        )))) && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        handleResetToInitial(question.id)
-                                    }
-                                >
-                                    <Clock className="h-4 w-4 mr-1" />
-                                    {question.assigned_to === currentUser?.id
-                                        ? "Review Again"
-                                        : "Reset & Assign to Me"}
-                                </Button>
-                            )}
-
-                        {/* Mark as Done button: Show when assigned to self and under-review */}
-                        {question.assigned_to === currentUser?.id &&
-                            question.state === "under-review" && (
-                                <Button
-                                    variant="default"
-                                    size="sm"
-                                    onClick={() =>
-                                        handleChangeState(question.id, "done")
-                                    }
-                                >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Mark as Done
-                                </Button>
-                            )}
-
-                        {/* Unassign button: Show when assigned to self and under-review */}
-                        {question.assigned_to === currentUser?.id &&
-                            question.state === "under-review" && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleUnassign(question.id)}
-                                >
-                                    <UserMinus className="h-4 w-4" />
-                                </Button>
-                            )}
-
-                        {/* Delete button: Show if user created it or is admin */}
-                        {(currentUser?.roles?.includes("admin") ||
-                            question.creator?.id === currentUser?.id) && (
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDelete(question)}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </div>
+                    <QuestionActions
+                        actions={useQuestionActions({
+                            question,
+                            currentUser,
+                            context: "row",
+                            handlers,
+                        })}
+                        className="justify-end"
+                    />
                 </TableCell>
             </TableRow>
         ));
@@ -775,7 +572,7 @@ export default function Index({ questions, subjects, filters }: Props) {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="overflow-x-auto md:overflow-x-visible">
+                        <div className="overflow-x-auto">
                             <Tabs
                                 value={activeTab}
                                 onValueChange={handleTabChange}

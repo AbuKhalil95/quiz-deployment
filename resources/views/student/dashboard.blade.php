@@ -60,7 +60,102 @@
         @endif
     </div>
 
+    <hr class="my-4">
 
+    {{-- Mixed Bag Quizzes Section --}}
+    @if($mixedBagQuizzes->count() > 0)
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4>Mixed Bag Quizzes</h4>
+        </div>
+        <p class="text-muted mb-3">Take randomized quizzes with questions from multiple subjects to test your knowledge across different topics.</p>
+
+        <div class="row mb-4">
+            @foreach ($mixedBagQuizzes as $quiz)
+                @if($quiz->questions->count() > 0)
+                    <div class="col-md-4 mb-3">
+                        <div class="card card-shadow h-100">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">{{ $quiz->title }}</h5>
+                                <p class="card-text text-muted mb-1">
+                                    Mode: <strong>{{ ucfirst(str_replace('_', ' ', $quiz->mode)) }}</strong>
+                                </p>
+                                @if($quiz->time_limit_minutes)
+                                    <p class="card-text text-muted mb-1">
+                                        Time limit: {{ $quiz->time_limit_minutes }} min
+                                    </p>
+                                @endif
+                                @if($quiz->total_questions)
+                                    <p class="card-text text-muted mb-2">
+                                        Questions: {{ $quiz->total_questions }}
+                                    </p>
+                                @endif
+                                <div class="mt-auto">
+                                    <a href="{{ route('student.quizzes.show', $quiz->id) }}" class="btn btn-primary w-100">
+                                        View & Start
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+        </div>
+
+        <hr class="my-4">
+    @endif
+
+    {{-- Adaptive Quiz Section --}}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Adaptive Quizzes</h4>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card card-shadow h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Create Challenge</h5>
+                    <p class="card-text text-muted mb-3">
+                        Generate a personalized adaptive quiz based on your performance
+                    </p>
+                    <div class="mt-auto">
+                        <a href="{{ route('student.adaptive.create') }}" class="btn btn-primary w-100">
+                            Create Challenge
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card card-shadow h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Browse Challenges</h5>
+                    <p class="card-text text-muted mb-3">
+                        Take adaptive quizzes created by other students
+                    </p>
+                    <div class="mt-auto">
+                        <a href="{{ route('student.adaptive.index') }}" class="btn btn-primary w-100">
+                            Browse Challenges
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card card-shadow h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">My Challenges</h5>
+                    <p class="card-text text-muted mb-3">
+                        View and manage your created adaptive quizzes
+                    </p>
+                    <div class="mt-auto">
+                        <a href="{{ route('student.adaptive.myChallenges') }}" class="btn btn-primary w-100">
+                            My Challenges
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     
     <hr class="my-4">

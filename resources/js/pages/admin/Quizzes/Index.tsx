@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DeleteQuizDialog } from "./_components/DeleteQuizDialog";
 import { Question } from "../Questions/Index";
@@ -175,6 +175,17 @@ export default function Index({
                                         </Button>
                                     </>
                                 )}
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        router.visit(
+                                            route("admin.quizzes.adaptive")
+                                        )
+                                    }
+                                >
+                                    <Users className="mr-2 h-4 w-4" />
+                                    Student Adaptive Quizzes
+                                </Button>
                                 <Button
                                     onClick={() =>
                                         router.visit(

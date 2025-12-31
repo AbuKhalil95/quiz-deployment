@@ -55,12 +55,22 @@ interface QuestionFormProps {
     question?: Question | null;
     subjects: Subject[];
     tags: Tag[];
+    onSaveDraft?: (e: React.FormEvent) => void;
+    onSaveAndApprove?: (e: React.FormEvent) => void;
+    showActions?: boolean;
+    approveOnSubmit?: boolean;
+    onApproveSubmitChange?: (value: boolean) => void;
 }
 
 export function QuestionForm({
     question,
     subjects,
     tags: initialTags,
+    onSaveDraft,
+    onSaveAndApprove,
+    showActions = true,
+    approveOnSubmit = false,
+    onApproveSubmitChange,
 }: QuestionFormProps) {
     const isEditMode = !!question;
     const { auth } = usePage().props as any;
@@ -114,6 +124,9 @@ export function QuestionForm({
     }, [initialTags]);
 
     const handleSubmit = (e: React.FormEvent, approve: boolean = false) => {
+        if (onApproveSubmitChange) {
+            onApproveSubmitChange(false);
+        }
         e.preventDefault();
         if (isEditMode) {
             if (!question) return;
@@ -239,7 +252,10 @@ export function QuestionForm({
 
     return (
         <>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form
+                onSubmit={(e) => handleSubmit(e, approveOnSubmit)}
+                className="space-y-6"
+            >
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                         <Label htmlFor="subject_id">Subject</Label>
@@ -491,39 +507,71 @@ export function QuestionForm({
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleReset}
-                        disabled={form.processing}
-                    >
-                        Reset
-                    </Button>
-                    {canApprove && (
+                {showActions && (
+                    <div className="flex justify-end gap-2">
                         <Button
                             type="button"
-                            variant="default"
-                            onClick={(e) => handleSubmit(e, true)}
+                            variant="outline"
+                            onClick={handleReset}
                             disabled={form.processing}
                         >
-                            {form.processing ? "Saving..." : "Save and Approve"}
+                            Reset
                         </Button>
-                    )}
-                    <Button
-                        type="submit"
-                        disabled={form.processing}
-                        variant={canApprove ? "outline" : "default"}
-                    >
-                        {form.processing
-                            ? isEditMode
-                                ? "Saving..."
-                                : "Creating..."
-                            : isEditMode
-                            ? "Save as Draft"
-                            : "Create Question"}
-                    </Button>
-                </div>
+                        {canApprove && onSaveAndApprove ? (
+                            <Button
+                                type="button"
+                                variant="default"
+                                onClick={onSaveAndApprove}
+                                disabled={form.processing}
+                            >
+                                {form.processing
+                                    ? "Saving..."
+                                    : "Save and Approve"}
+                            </Button>
+                        ) : canApprove ? (
+                            <Button
+                                type="button"
+                                variant="default"
+                                onClick={(e) => handleSubmit(e, true)}
+                                disabled={form.processing}
+                            >
+                                {form.processing
+                                    ? "Saving..."
+                                    : "Save and Approve"}
+                            </Button>
+                        ) : null}
+                        {onSaveDraft ? (
+                            <Button
+                                type="button"
+                                variant={canApprove ? "outline" : "default"}
+                                onClick={onSaveDraft}
+                                disabled={form.processing}
+                            >
+                                {form.processing
+                                    ? isEditMode
+                                        ? "Saving..."
+                                        : "Creating..."
+                                    : isEditMode
+                                    ? "Save as Draft"
+                                    : "Create Question"}
+                            </Button>
+                        ) : (
+                            <Button
+                                type="submit"
+                                disabled={form.processing}
+                                variant={canApprove ? "outline" : "default"}
+                            >
+                                {form.processing
+                                    ? isEditMode
+                                        ? "Saving..."
+                                        : "Creating..."
+                                    : isEditMode
+                                    ? "Save as Draft"
+                                    : "Create Question"}
+                            </Button>
+                        )}
+                    </div>
+                )}
             </form>
 
             <QuickCreateTagDialog

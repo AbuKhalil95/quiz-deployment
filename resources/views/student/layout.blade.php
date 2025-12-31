@@ -324,6 +324,108 @@
             color: #fff !important;
         }
 
+        /* Card styles */
+        .card {
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-card-border);
+            color: var(--color-text);
+        }
+
+        .card-shadow {
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-title,
+        .card-title h5,
+        .card-title h6 {
+            color: var(--color-text);
+        }
+
+        /* Text muted */
+        .text-muted {
+            color: var(--color-text-secondary) !important;
+        }
+
+        /* Buttons */
+        .btn-outline-secondary {
+            background-color: transparent;
+            border-color: var(--color-border);
+            color: var(--color-text);
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: var(--color-secondary);
+            border-color: var(--color-border);
+            color: var(--color-text);
+        }
+
+        .btn-warning {
+            background-color: var(--color-warning);
+            color: var(--color-text);
+        }
+
+        .btn-warning:hover {
+            background-color: var(--color-warning);
+            opacity: 0.9;
+        }
+
+        /* Links */
+        .btn-link {
+            color: var(--color-primary);
+        }
+
+        .btn-link:hover {
+            color: var(--color-primary-hover);
+        }
+
+        /* HR */
+        hr {
+            border-color: var(--color-border);
+            opacity: 0.5;
+        }
+
+        /* Pagination */
+        .pagination .page-link {
+            background-color: var(--color-surface);
+            border-color: var(--color-border);
+            color: var(--color-text);
+        }
+
+        .pagination .page-item.disabled .page-link {
+            background-color: var(--color-surface);
+            border-color: var(--color-border);
+            color: var(--color-text-secondary);
+            opacity: 0.5;
+        }
+
+        /* Navbar */
+        .navbar-nav .nav-link {
+            color: var(--color-text);
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: var(--color-primary);
+        }
+
+        .dropdown-menu {
+            background-color: var(--color-surface);
+            border-color: var(--color-border);
+        }
+
+        .dropdown-item {
+            color: var(--color-text);
+        }
+
+        .dropdown-item:hover,
+        .dropdown-item:focus {
+            background-color: var(--color-secondary);
+            color: var(--color-text);
+        }
+
+        /* Container */
+        .container {
+            color: var(--color-text);
+        }
 
         /* Responsive */
         @media (max-width: 768px) {

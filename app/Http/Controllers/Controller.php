@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesInertiaRequests;
 use App\Models\User;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 
 abstract class Controller
 {
-    use HandlesInertiaRequests;
+    use AuthorizesRequests, HandlesInertiaRequests;
 
     /**
      * Get the authenticated user with proper type hinting for Intelephense.

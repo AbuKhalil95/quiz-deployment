@@ -365,9 +365,20 @@ export default function Create({ subjects, questions }: Props) {
                                         <Label>Subject</Label>
                                         <Select
                                             value={form.data.subject_id || ""}
-                                            onValueChange={(v) =>
-                                                form.setData("subject_id", v)
-                                            }
+                                            onValueChange={(v) => {
+                                                form.setData("subject_id", v);
+                                                form.data?.title ||
+                                                    form.setData(
+                                                        "title",
+                                                        `${
+                                                            subjects.find(
+                                                                (s) =>
+                                                                    s.id ===
+                                                                    Number(v)
+                                                            )?.name
+                                                        } Quiz`
+                                                    );
+                                            }}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select subject" />

@@ -162,7 +162,7 @@ export default function Show({ quiz }: Props) {
                             {displayedQuestions &&
                             displayedQuestions.length > 0 ? (
                                 <>
-                                    <div className="overflow-x-auto md:overflow-x-visible">
+                                    <div className="overflow-x-auto">
                                         <div className="space-y-3 min-w-full">
                                             {displayedQuestions.map((q) => (
                                                 <div
