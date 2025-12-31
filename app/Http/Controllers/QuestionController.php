@@ -611,9 +611,11 @@ class QuestionController extends Controller
                 ->toArray();
 
             if (! empty($unauthorizedIds)) {
-                return back()->withErrors([
-                    'message' => 'You can only delete questions you created. Some selected questions were created by others.',
-                ])->withInput();
+                return $this->redirectWithError(
+                    $request,
+                    'admin.questions.index',
+                    'You can only delete questions you created. Some selected questions were created by others.'
+                );
             }
         }
 
@@ -762,16 +764,26 @@ class QuestionController extends Controller
             $isAdminCreated = $question->creator && $question->creator->hasRole('admin');
 
             if (! $isOwnQuestion && ! $isAdminCreated) {
-                return back()->withErrors([
-                    'message' => 'You can only assign questions created by admins or your own questions.',
-                ]);
+                return $this->redirectWithErrorToResource(
+                    $request,
+                    'admin.questions.index',
+                    'admin.questions.show',
+                    $id,
+                    'You can only assign questions created by admins or your own questions.',
+                    fn ($req, $id) => $this->shouldRedirectBack($req, $id)
+                );
             }
         }
 
         if (! $question->canBeAssigned()) {
-            return back()->withErrors([
-                'message' => 'This question is already assigned or cannot be assigned.',
-            ]);
+            return $this->redirectWithErrorToResource(
+                $request,
+                'admin.questions.index',
+                'admin.questions.show',
+                $id,
+                'This question is already assigned or cannot be assigned.',
+                fn ($req, $id) => $this->shouldRedirectBack($req, $id)
+            );
         }
 
         if ($question->assignTo($user->id)) {
@@ -791,9 +803,14 @@ class QuestionController extends Controller
             return response()->json(['success' => 'Question assigned successfully']);
         }
 
-        return back()->withErrors([
-            'message' => 'Failed to assign question.',
-        ]);
+        return $this->redirectWithErrorToResource(
+            $request,
+            'admin.questions.index',
+            'admin.questions.show',
+            $id,
+            'Failed to assign question.',
+            fn ($req, $id) => $this->shouldRedirectBack($req, $id)
+        );
     }
 
     /**
@@ -850,9 +867,11 @@ class QuestionController extends Controller
         }
 
         if (! empty($unauthorized)) {
-            return back()->withErrors([
-                'message' => 'You can only assign questions created by admins or your own questions. Some selected questions were created by others.',
-            ])->withInput();
+            return $this->redirectWithError(
+                $request,
+                'admin.questions.index',
+                'You can only assign questions created by admins or your own questions. Some selected questions were created by others.'
+            );
         }
 
         $message = "{$assigned} question(s) assigned successfully";
@@ -919,9 +938,11 @@ class QuestionController extends Controller
         }
 
         if (! empty($unauthorized)) {
-            return back()->withErrors([
-                'message' => 'You can only change state of questions assigned to you. Some selected questions are not assigned to you.',
-            ])->withInput();
+            return $this->redirectWithError(
+                $request,
+                'admin.questions.index',
+                'You can only change state of questions assigned to you. Some selected questions are not assigned to you.'
+            );
         }
 
         $message = "{$changed} question(s) marked as done successfully";
@@ -958,9 +979,14 @@ class QuestionController extends Controller
         $isAdmin = $user->hasRole('admin');
 
         if (! $question->canBeUnassigned($user->id, $isAdmin)) {
-            return back()->withErrors([
-                'message' => 'You cannot unassign this question.',
-            ]);
+            return $this->redirectWithErrorToResource(
+                $request,
+                'admin.questions.index',
+                'admin.questions.show',
+                $id,
+                'You cannot unassign this question.',
+                fn ($req, $id) => $this->shouldRedirectBack($req, $id)
+            );
         }
 
         if ($question->unassign($user->id)) {
@@ -980,9 +1006,14 @@ class QuestionController extends Controller
             return response()->json(['success' => 'Question unassigned successfully']);
         }
 
-        return back()->withErrors([
-            'message' => 'Failed to unassign question.',
-        ]);
+        return $this->redirectWithErrorToResource(
+            $request,
+            'admin.questions.index',
+            'admin.questions.show',
+            $id,
+            'Failed to unassign question.',
+            fn ($req, $id) => $this->shouldRedirectBack($req, $id)
+        );
     }
 
     /**
@@ -1016,9 +1047,14 @@ class QuestionController extends Controller
 
         // Validate state transition
         if ($request->state === Question::STATE_DONE && $question->state !== Question::STATE_UNDER_REVIEW) {
-            return back()->withErrors([
-                'message' => 'Question must be in under-review state to mark as done.',
-            ]);
+            return $this->redirectWithErrorToResource(
+                $request,
+                'admin.questions.index',
+                'admin.questions.show',
+                $id,
+                'Question must be in under-review state to mark as done.',
+                fn ($req, $id) => $this->shouldRedirectBack($req, $id)
+            );
         }
 
         if ($question->changeState($request->state, $request->notes ?? null)) {
@@ -1038,9 +1074,14 @@ class QuestionController extends Controller
             return response()->json(['success' => 'Question state updated successfully']);
         }
 
-        return back()->withErrors([
-            'message' => 'Failed to update question state.',
-        ]);
+        return $this->redirectWithErrorToResource(
+            $request,
+            'admin.questions.index',
+            'admin.questions.show',
+            $id,
+            'Failed to update question state.',
+            fn ($req, $id) => $this->shouldRedirectBack($req, $id)
+        );
     }
 
     /**

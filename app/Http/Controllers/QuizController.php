@@ -134,6 +134,15 @@ class QuizController extends Controller
                 ->toArray();
 
             if (! empty($nonDoneQuestions)) {
+                if ($this->wantsInertiaResponse($request)) {
+                    return $this->redirectWithError(
+                        $request,
+                        'admin.quizzes.edit',
+                        'Only questions that are marked as done can be added to quizzes.',
+                        ['id' => $id]
+                    );
+                }
+
                 return back()->withErrors([
                     'questions' => 'Only questions that are marked as done can be added to quizzes.',
                 ])->withInput();

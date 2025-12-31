@@ -68,12 +68,12 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
 
     // Subject
     Route::get('/admin/subjects', [SubjectController::class, 'index'])->name('admin.subjects.index');
-    Route::get('/admin/subjects/{id}', [SubjectController::class, 'show'])->name('admin.subjects.show');
     Route::post('/admin/subjects', [SubjectController::class, 'create'])->name('admin.subjects.create');
+    Route::delete('/admin/subjects/bulk', [SubjectController::class, 'bulkDestroy'])->name('admin.subjects.bulkDestroy');
+    Route::get('/admin/subjects/{id}', [SubjectController::class, 'show'])->name('admin.subjects.show');
     Route::get('/admin/subjects/{id}/edit', [SubjectController::class, 'edit'])->name('admin.subjects.edit');
     Route::post('/admin/subjects/{id}', [SubjectController::class, 'update'])->name('admin.subjects.update');
     Route::delete('/admin/subjects/{id}', [SubjectController::class, 'destroy'])->name('admin.subjects.destroy');
-    Route::delete('/admin/subjects/bulk', [SubjectController::class, 'bulkDestroy'])->name('admin.subjects.bulkDestroy');
 
     // Question
     Route::post('/admin/questions/import', [QuestionController::class, 'import'])
@@ -159,12 +159,12 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
 
     // Tag
     Route::get('/admin/tags', [TagController::class, 'index'])->name('admin.tags.index');
-    Route::get('/admin/tags/{id}', [TagController::class, 'show'])->name('admin.tags.show');
     Route::post('/admin/tags', [TagController::class, 'create'])->name('admin.tags.create');
+    Route::delete('/admin/tags/bulk', [TagController::class, 'bulkDestroy'])->name('admin.tags.bulkDestroy');
+    Route::get('/admin/tags/{id}', [TagController::class, 'show'])->name('admin.tags.show');
     Route::get('/admin/tags/{id}/edit', [TagController::class, 'edit'])->name('admin.tags.edit');
     Route::post('/admin/tags/{id}', [TagController::class, 'update'])->name('admin.tags.update');
     Route::delete('/admin/tags/{id}', [TagController::class, 'destroy'])->name('admin.tags.destroy');
-    Route::delete('/admin/tags/bulk', [TagController::class, 'bulkDestroy'])->name('admin.tags.bulkDestroy');
 
     // QuestionTag
     Route::get('/admin/question-tags', [QuestionTagController::class, 'index'])->name('admin.questionTags.index');

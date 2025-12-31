@@ -14,7 +14,7 @@ class SubjectController extends Controller
         $query = Subject::query();
 
         // Search
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $query->where('name', 'like', "%{$search}%");
         }
@@ -35,13 +35,13 @@ class SubjectController extends Controller
                 ->addColumn('action', function ($row) {
                     return '
                     <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" data-toggle="tooltip" title="View">View</a>
+                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
 
-                     <a href="javascript:void(0)" class="edit-subject btn btn-primary btn-action" data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
+                     <a href="javascript:void(0)" class="edit-subject btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
                       <i class="fas fa-pencil-alt"></i>
                      </a>
 
-                    <a href="javascript:void(0)" class="delete-subject btn btn-danger" data-id="' . $row->id . '" data-toggle="tooltip" title="Delete">
+                    <a href="javascript:void(0)" class="delete-subject btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
                       <i class="fas fa-trash"></i>
                       </a>
                      </div>';
@@ -75,7 +75,7 @@ class SubjectController extends Controller
     public function show(string $id)
     {
         $subject = Subject::find($id);
-        if (!$subject) {
+        if (! $subject) {
             return response()->json(['error' => 'Subject not found'], 404);
         }
 
@@ -120,7 +120,14 @@ class SubjectController extends Controller
 
     public function destroy($id)
     {
-        Subject::find($id)->delete();
+        $subject = Subject::find($id);
+
+        if (! $subject) {
+            abort(404, 'Subject not found');
+        }
+
+        $subject->delete();
+
         if (request()->header('X-Inertia')) {
             return redirect()
                 ->route('admin.subjects.index')

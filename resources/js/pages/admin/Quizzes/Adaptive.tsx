@@ -113,18 +113,18 @@ export default function Adaptive({
     filters,
 }: Props) {
     const [search, setSearch] = React.useState(filters.search || "");
-    const [strategy, setStrategy] = React.useState(filters.strategy || "");
-    const [subjectId, setSubjectId] = React.useState(filters.subject_id || "");
+    const [strategy, setStrategy] = React.useState(filters.strategy || "all");
+    const [subjectId, setSubjectId] = React.useState(filters.subject_id || "all");
     const [targetStudentId, setTargetStudentId] = React.useState(
-        filters.target_student_id || ""
+        filters.target_student_id || "all"
     );
 
     const applyFilters = () => {
         const params: Record<string, string> = {};
         if (search) params.search = search;
-        if (strategy) params.strategy = strategy;
-        if (subjectId) params.subject_id = subjectId;
-        if (targetStudentId) params.target_student_id = targetStudentId;
+        if (strategy && strategy !== "all") params.strategy = strategy;
+        if (subjectId && subjectId !== "all") params.subject_id = subjectId;
+        if (targetStudentId && targetStudentId !== "all") params.target_student_id = targetStudentId;
 
         router.get(route("admin.quizzes.adaptive"), params, {
             preserveState: true,
@@ -134,9 +134,9 @@ export default function Adaptive({
 
     const clearFilters = () => {
         setSearch("");
-        setStrategy("");
-        setSubjectId("");
-        setTargetStudentId("");
+        setStrategy("all");
+        setSubjectId("all");
+        setTargetStudentId("all");
         router.get(route("admin.quizzes.adaptive"));
     };
 
@@ -213,7 +213,7 @@ export default function Adaptive({
                                         <SelectValue placeholder="All strategies" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">
+                                        <SelectItem value="all">
                                             All strategies
                                         </SelectItem>
                                         {Object.entries(strategies).map(
@@ -240,7 +240,7 @@ export default function Adaptive({
                                         <SelectValue placeholder="All subjects" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">
+                                        <SelectItem value="all">
                                             All subjects
                                         </SelectItem>
                                         {subjects.map((subject) => (
@@ -267,7 +267,7 @@ export default function Adaptive({
                                         <SelectValue placeholder="All students" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">
+                                        <SelectItem value="all">
                                             All students
                                         </SelectItem>
                                         {targetStudents.map((student) => (
