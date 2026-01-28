@@ -26,8 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Without this, Laravel sees the request as HTTP and generates http:// URLs
         // (e.g. pagination uses request()->url()), causing Mixed Content errors.
         // Trusting X-Forwarded-Proto makes Laravel generate https:// everywhere.
-        $middleware->trustProxies(at: '*');
-        $middleware->trustHosts(at: ['*']);
+        // Use '0.0.0.0/0' instead of '*' to avoid preg_match "quantifier" error.
+        $middleware->trustProxies(at: '0.0.0.0/0');
+        // Use '.*' (valid regex) instead of '*' for "any host" to avoid preg_match error.
+        $middleware->trustHosts(at: ['.*']);
 
         // Apply Inertia middleware globally
         // It only activates when controllers return Inertia responses
