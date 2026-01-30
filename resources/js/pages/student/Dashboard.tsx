@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { route } from "ziggy-js";
-import { Clock, BookOpen, Trophy, Eye, Play, Flag } from "lucide-react";
+import { Clock, BookOpen, Trophy, Eye, Lightbulb, Play, Flag, Check, Archive } from "lucide-react";
 import { SmartPagination } from "@/components/common/SmartPagination";
 import { RelativeDate } from "@/components/common/RelativeDate";
 
@@ -19,7 +19,7 @@ interface Quiz {
     mode: string;
     time_limit_minutes: number | null;
     total_questions: number | null;
-    questions_count?: number;
+    show_explanation?: boolean;
     subject?: {
         id: number;
         name: string;
@@ -32,6 +32,7 @@ interface Attempt {
     score: number | null;
     created_at: string;
     ended_at: string | null;
+    archived_at: string | null;
     quiz: Quiz;
 }
 
@@ -127,12 +128,12 @@ export default function Dashboard({
                                                 />
                                             </span>
                                         </div>
-                                        <div className="flex gap-2 mt-auto">
+                                        <div className="flex flex-col gap-2 mt-auto">
                                             <Button
                                                 asChild
                                                 variant="default"
                                                 size="sm"
-                                                className="flex-1"
+                                                className="w-full"
                                             >
                                                 <Link
                                                     href={route(
@@ -144,6 +145,50 @@ export default function Dashboard({
                                                     Resume
                                                 </Link>
                                             </Button>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="flex-1"
+                                                    onClick={() =>
+                                                        router.post(
+                                                            route(
+                                                                "student.attempts.complete",
+                                                                attempt.id
+                                                            ),
+                                                            {},
+                                                            {
+                                                                preserveScroll: true,
+                                                            }
+                                                        )
+                                                    }
+                                                >
+                                                    <Check className="mr-1.5 h-3.5 w-3.5" />
+                                                    Complete
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="flex-1 text-muted-foreground hover:text-foreground"
+                                                    onClick={() =>
+                                                        router.post(
+                                                            route(
+                                                                "student.attempts.archive",
+                                                                attempt.id
+                                                            ),
+                                                            {},
+                                                            {
+                                                                preserveScroll: true,
+                                                            }
+                                                        )
+                                                    }
+                                                >
+                                                    <Archive className="mr-1.5 h-3.5 w-3.5" />
+                                                    Archive
+                                                </Button>
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -228,9 +273,7 @@ export default function Dashboard({
                                         className="flex flex-col"
                                     >
                                         <CardHeader>
-                                            <CardTitle>
-                                                {quiz.title}
-                                            </CardTitle>
+                                            <CardTitle>{quiz.title}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="space-y-2 flex-1 flex flex-col">
                                             <div className="space-y-1">
@@ -240,13 +283,9 @@ export default function Dashboard({
                                                         .map(
                                                             (word) =>
                                                                 word
-                                                                    .charAt(
-                                                                        0
-                                                                    )
+                                                                    .charAt(0)
                                                                     .toUpperCase() +
-                                                                word.slice(
-                                                                    1
-                                                                )
+                                                                word.slice(1)
                                                         )
                                                         .join(" ")}
                                                 </Badge>
@@ -262,10 +301,14 @@ export default function Dashboard({
                                                 {quiz.total_questions && (
                                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                         <BookOpen className="h-4 w-4" />
-                                                        {
-                                                            quiz.total_questions
-                                                        }{" "}
+                                                        {quiz.total_questions}{" "}
                                                         questions
+                                                    </div>
+                                                )}
+                                                {quiz.show_explanation && (
+                                                    <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                                                        <Lightbulb className="h-4 w-4" />
+                                                        Hints available
                                                     </div>
                                                 )}
                                             </div>
@@ -411,7 +454,14 @@ export default function Dashboard({
                                 >
                                     <CardHeader>
                                         <CardTitle>
-                                            {attempt.quiz.title}
+                                            <span>
+                                                {attempt.quiz.title}
+                                                {attempt.archived_at && (
+                                                    <span className="ml-1.5 text-sm font-normal text-muted-foreground">
+                                                        (archived)
+                                                    </span>
+                                                )}
+                                            </span>
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-2 flex-1 flex flex-col">

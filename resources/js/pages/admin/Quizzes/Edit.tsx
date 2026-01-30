@@ -18,6 +18,7 @@ import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
 import { handleFormErrors } from "@/lib/utils";
 import { route } from "ziggy-js";
 import axios from "axios";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Subject {
     id: number;
@@ -42,6 +43,7 @@ interface Quiz {
     subject_id?: number;
     time_limit_minutes?: number;
     total_questions?: number;
+    show_explanation: boolean;
     questions?: QuizQuestion[];
 }
 
@@ -52,6 +54,7 @@ interface Props {
 }
 
 export default function Edit({ quiz, subjects, questions }: Props) {
+    console.log(quiz.mode);
     const form = useForm({
         title: quiz.title,
         mode: quiz.mode === "timed" ? "mixed_bag" : quiz.mode, // Convert old "timed" to "mixed_bag"
@@ -59,6 +62,10 @@ export default function Edit({ quiz, subjects, questions }: Props) {
         total_questions: quiz.total_questions
             ? String(quiz.total_questions)
             : "",
+        time_limit_minutes: quiz.time_limit_minutes
+            ? String(quiz.time_limit_minutes)
+            : "", // إضافة هذا الحقل
+        show_explanation: quiz.show_explanation,
         questions: quiz.questions || [],
     });
 
@@ -304,6 +311,35 @@ export default function Edit({ quiz, subjects, questions }: Props) {
                                     <InputError message={form.errors.mode} />
                                 </div>
 
+                                {/* Time Limit (Minutes) */}
+                                <div className="grid gap-2">
+                                    <Label>
+                                        Time Limit (Minutes)
+                                        <span className="text-muted-foreground text-sm ml-1">
+                                            (Optional)
+                                        </span>
+                                    </Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        placeholder="Enter exam duration in minutes (leave empty for no timer)"
+                                        value={form.data.time_limit_minutes}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                "time_limit_minutes",
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        message={form.errors.time_limit_minutes}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Leave empty if you do not want a timer
+                                        for this quiz.
+                                    </p>
+                                </div>
+
                                 {/* Subject */}
                                 <div className="grid gap-2">
                                     <Label>Subject</Label>
@@ -370,6 +406,18 @@ export default function Edit({ quiz, subjects, questions }: Props) {
                                         </p>
                                     </div>
                                 )}
+
+                                <Checkbox
+                                    label="Show explanations (will be visible for
+                                        all questions)"
+                                    checked={form.data.show_explanation}
+                                    onCheckedChange={(checked) =>
+                                        form.setData(
+                                            "show_explanation",
+                                            !!checked
+                                        )
+                                    }
+                                />
 
                                 {/* Quiz Questions */}
                                 <div className="border rounded-md p-4">

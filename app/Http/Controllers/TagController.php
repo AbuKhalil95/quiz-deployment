@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Tag;
 use Illuminate\Http\Request;
-use Yajra\DataTables\DataTables;
 
 class TagController extends Controller
 {
@@ -19,40 +18,10 @@ class TagController extends Controller
 
         $tags = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
-        // For Inertia response
-        if ($request->inertia($request)) {
-            return \Inertia\Inertia::render('admin/Tags/Index', [
-                'tags' => $tags,
-                'filters' => $request->only(['search']),
-            ]);
-        }
-
-        // Check if this is an AJAX request (DataTables) - but NOT Inertia
-        if ($this->isDataTablesRequest($request)) {
-            $data = Tag::query();
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
-
-                     <a href="javascript:void(0)" class="edit-Tag btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
-                      <i class="fas fa-pencil-alt"></i>
-                     </a>
-
-                    <a href="javascript:void(0)" class="delete-Tag btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
-                      <i class="fas fa-trash"></i>
-                      </a>
-                     </div>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-
-        // Fallback to Blade view for legacy routes
-        return view('Dashboard/Tag/tag');
+        return \Inertia\Inertia::render('admin/Tags/Index', [
+            'tags' => $tags,
+            'filters' => $request->only(['search']),
+        ]);
     }
 
     public function create(Request $request)
@@ -79,8 +48,7 @@ class TagController extends Controller
             ]);
         }
 
-        // For Inertia requests (only if NOT a quick create)
-        if ($request->inertia($request)) {
+        if ($request->inertia()) {
             return redirect()
                 ->route('admin.tags.index')
                 ->with('success', 'Tag created successfully');

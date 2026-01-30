@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Subject;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Yajra\DataTables\DataTables;
 
 class SubjectController extends Controller
 {
@@ -23,34 +22,8 @@ class SubjectController extends Controller
 
         return Inertia::render('admin/Subjects/Index', [
             'subjects' => $subjects,
-            'filters' => $request->only(['search']), // pass the search term to the frontend
+            'filters' => $request->only(['search']),
         ]);
-
-        if ($request->ajax()) {
-
-            $data = Subject::query();
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
-
-                     <a href="javascript:void(0)" class="edit-subject btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
-                      <i class="fas fa-pencil-alt"></i>
-                     </a>
-
-                    <a href="javascript:void(0)" class="delete-subject btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
-                      <i class="fas fa-trash"></i>
-                      </a>
-                     </div>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-
-        return view('Dashboard/Subject/subject');
     }
 
     public function create(Request $request)

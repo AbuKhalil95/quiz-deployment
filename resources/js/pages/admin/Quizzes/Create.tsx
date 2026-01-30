@@ -52,22 +52,28 @@ export default function Create({ subjects, questions }: Props) {
         mode: "by_subject",
         subject_id: "",
         total_questions: "",
+        time_limit_minutes: "",
+        show_explanation: false,
         questions: [] as Array<{ question_id: string; order: number }>,
     });
-
+    function shuffleArray<T>(array: T[]): T[] {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }
     const [filteredQuestions, setFilteredQuestions] =
         React.useState<Question[]>(questions);
     const [selectedSubjects, setSelectedSubjects] = React.useState<number[]>(
         []
     );
-    const [selectedTagIds, setSelectedTagIds] = React.useState<number[]>(
-        []
-    );
+    const [selectedTagIds, setSelectedTagIds] = React.useState<number[]>([]);
     const [availableTags, setAvailableTags] = React.useState<Tag[]>([]);
     const [questionSearch, setQuestionSearch] = React.useState<string>("");
     const [isLoadingQuestions, setIsLoadingQuestions] =
         React.useState<boolean>(false);
-
     // Fetch tags when subject changes (for by_subject mode)
     React.useEffect(() => {
         if (form.data.mode === "by_subject" && form.data.subject_id) {
@@ -77,7 +83,7 @@ export default function Create({ subjects, questions }: Props) {
                     setAvailableTags(data);
                     // Clear tag selections that are not available for new subject
                     const validTagIds = data.map((t) => t.id);
-                    setSelectedTagIds((prev) => 
+                    setSelectedTagIds((prev) =>
                         prev.filter((id) => validTagIds.includes(id))
                     );
                 })
@@ -193,10 +199,12 @@ export default function Create({ subjects, questions }: Props) {
                     setIsLoadingQuestions(false);
                     return;
                 }
+                const shuffledQuestions = shuffleArray(data);
 
-                setFilteredQuestions(data);
+                setFilteredQuestions(shuffledQuestions);
 
-                const rows = data.map((q, index) => ({
+                // Auto-populate all questions for by_subject mode
+                const rows = shuffledQuestions.map((q, index) => ({
                     question_id: String(q.id),
                     order: index + 1,
                 }));
@@ -216,6 +224,17 @@ export default function Create({ subjects, questions }: Props) {
                 toast.error("Failed to fetch questions.");
                 setIsLoadingQuestions(false);
             });
+    };
+
+    const handleShuffleQuestions = () => {
+        const shuffled = shuffleArray(form.data.questions);
+        // Reassign order numbers after shuffling
+        const rows = shuffled.map((q, index) => ({
+            ...q,
+            order: index + 1,
+        }));
+        form.setData("questions", rows);
+        toast.success("Questions shuffled!");
     };
 
     const addRow = () => {
@@ -246,7 +265,7 @@ export default function Create({ subjects, questions }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
+        console.log("Sending data to backend:", form.data);
         // Validate based on mode
         if (form.data.mode === "by_subject") {
             if (!form.data.subject_id) {
@@ -288,7 +307,7 @@ export default function Create({ subjects, questions }: Props) {
                 router.visit(route("admin.quizzes.index"));
             },
             onError: () => {
-                handleFormErrors(form.errors);
+                toast.error("Failed to create quiz");
             },
         });
     };
@@ -402,6 +421,50 @@ export default function Create({ subjects, questions }: Props) {
                                     <InputError message={form.errors.mode} />
                                 </div>
 
+                                {/* Time Limit - Optional for all modes */}
+                                <div className="grid gap-2">
+                                    <Label>
+                                        Time Limit (Minutes)
+                                        <span className="text-muted-foreground text-sm ml-1">
+                                            (Optional)
+                                        </span>
+                                    </Label>
+
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        placeholder="Enter exam duration in minutes (leave empty for no timer)"
+                                        value={form.data.time_limit_minutes}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                "time_limit_minutes",
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+
+                                    <InputError
+                                        message={form.errors.time_limit_minutes}
+                                    />
+
+                                    <p className="text-xs text-muted-foreground">
+                                        Leave empty if you do not want a timer
+                                        for this quiz.
+                                    </p>
+                                </div>
+
+                                <Checkbox
+                                    label="Show explanations (will be visible for
+                                        all questions)"
+                                    checked={form.data.show_explanation}
+                                    onCheckedChange={(checked) =>
+                                        form.setData(
+                                            "show_explanation",
+                                            !!checked
+                                        )
+                                    }
+                                />
+
                                 {/* Subject - Show dropdown for by_subject mode, checkboxes for mixed_bag mode */}
                                 {form.data.mode === "by_subject" ? (
                                     <div className="grid gap-2">
@@ -413,11 +476,12 @@ export default function Create({ subjects, questions }: Props) {
                                                 form.data?.title ||
                                                     form.setData(
                                                         "title",
-                                                        `${subjects.find(
-                                                            (s) =>
-                                                                s.id ===
-                                                                Number(v)
-                                                        )?.name
+                                                        `${
+                                                            subjects.find(
+                                                                (s) =>
+                                                                    s.id ===
+                                                                    Number(v)
+                                                            )?.name
                                                         } Quiz`
                                                     );
                                             }}
@@ -441,21 +505,31 @@ export default function Create({ subjects, questions }: Props) {
                                         />
 
                                         {/* Tag Filter - Only show when subject is selected */}
-                                        {form.data.subject_id &&
-                                            (
-                                                <div className="grid gap-2">
-                                                    <Label>Filter by Tag (Optional)</Label>
-                                                    <TagCombobox
-                                                        tags={availableTags}
-                                                        selectedTagIds={selectedTagIds}
-                                                        disabled={availableTags.length === 0}
-                                                        onSelectionChange={(tagIds) => {
-                                                            setSelectedTagIds(tagIds);
-                                                        }}
-                                                        placeholder="Search tags to filter..."
-                                                    />
-                                                </div>
-                                            )}
+                                        {form.data.subject_id && (
+                                            <div className="grid gap-2">
+                                                <Label>
+                                                    Filter by Tag (Optional)
+                                                </Label>
+                                                <TagCombobox
+                                                    tags={availableTags}
+                                                    selectedTagIds={
+                                                        selectedTagIds
+                                                    }
+                                                    disabled={
+                                                        availableTags.length ===
+                                                        0
+                                                    }
+                                                    onSelectionChange={(
+                                                        tagIds
+                                                    ) => {
+                                                        setSelectedTagIds(
+                                                            tagIds
+                                                        );
+                                                    }}
+                                                    placeholder="Search tags to filter..."
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="grid gap-2">
@@ -591,25 +665,46 @@ export default function Create({ subjects, questions }: Props) {
                                         <Label className="text-md font-semibold">
                                             Quiz Questions
                                         </Label>
-                                        {form.data.mode === "by_subject" &&
-                                            form.data.subject_id && (
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    onClick={addRow}
-                                                >
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                    Add Question
-                                                </Button>
-                                            )}
-                                        {form.data.mode === "mixed_bag" &&
-                                            form.data.questions.length > 0 && (
-                                                <span className="text-sm text-muted-foreground">
-                                                    {form.data.questions.length}{" "}
-                                                    question(s) randomly
-                                                    selected
-                                                </span>
-                                            )}
+
+                                        <div>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="secondary"
+                                                onClick={handleShuffleQuestions}
+                                                className="m-2"
+                                                disabled={
+                                                    form.data.questions
+                                                        .length === 0
+                                                }
+                                            >
+                                                🔀 Shuffle
+                                            </Button>
+                                            {form.data.mode === "by_subject" &&
+                                                form.data.subject_id && (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        onClick={addRow}
+                                                    >
+                                                        <Plus className="mr-2 h-4 w-4" />
+                                                        Add Question
+                                                    </Button>
+                                                )}
+
+                                            {form.data.mode === "mixed_bag" &&
+                                                form.data.questions.length >
+                                                    0 && (
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {
+                                                            form.data.questions
+                                                                .length
+                                                        }{" "}
+                                                        question(s) randomly
+                                                        selected
+                                                    </span>
+                                                )}
+                                        </div>
                                     </div>
                                     {form.data.mode === "by_subject" &&
                                         !form.data.subject_id && (
@@ -646,12 +741,13 @@ export default function Create({ subjects, questions }: Props) {
                                     )}
                                     {!isLoadingQuestions && (
                                         <div
-                                            className={`space-y-3 max-h-[50vh] overflow-y-auto ${form.data.mode ===
-                                                "by_subject" &&
+                                            className={`space-y-3 max-h-[50vh] overflow-y-auto ${
+                                                form.data.mode ===
+                                                    "by_subject" &&
                                                 !form.data.subject_id
-                                                ? "opacity-50 pointer-events-none"
-                                                : ""
-                                                }`}
+                                                    ? "opacity-50 pointer-events-none"
+                                                    : ""
+                                            }`}
                                         >
                                             {form.data.questions
                                                 .map((q, originalIndex) => ({
@@ -674,10 +770,10 @@ export default function Create({ subjects, questions }: Props) {
                                                         );
                                                     return questionData
                                                         ? questionData.question_text
-                                                            .toLowerCase()
-                                                            .includes(
-                                                                questionSearch.toLowerCase()
-                                                            )
+                                                              .toLowerCase()
+                                                              .includes(
+                                                                  questionSearch.toLowerCase()
+                                                              )
                                                         : false;
                                                 })
                                                 .map(
@@ -722,11 +818,11 @@ export default function Create({ subjects, questions }: Props) {
                                                                                             idx
                                                                                         ) =>
                                                                                             q2.question_id ===
-                                                                                            String(
-                                                                                                ques.id
-                                                                                            ) &&
+                                                                                                String(
+                                                                                                    ques.id
+                                                                                                ) &&
                                                                                             idx !==
-                                                                                            originalIndex
+                                                                                                originalIndex
                                                                                     )
                                                                             )
                                                                             .map(
@@ -783,7 +879,7 @@ export default function Create({ subjects, questions }: Props) {
                                                                     message={
                                                                         form
                                                                             .errors[
-                                                                        `questions.${originalIndex}.question_id`
+                                                                            `questions.${originalIndex}.question_id`
                                                                         ]
                                                                     }
                                                                 />
@@ -809,7 +905,7 @@ export default function Create({ subjects, questions }: Props) {
                                                                                     .target
                                                                                     .value
                                                                             ) ||
-                                                                            1
+                                                                                1
                                                                         )
                                                                     }
                                                                 />
@@ -817,7 +913,7 @@ export default function Create({ subjects, questions }: Props) {
                                                                     message={
                                                                         form
                                                                             .errors[
-                                                                        `questions.${originalIndex}.order`
+                                                                            `questions.${originalIndex}.order`
                                                                         ]
                                                                     }
                                                                 />

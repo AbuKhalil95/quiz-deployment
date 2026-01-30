@@ -146,4 +146,75 @@ class AttemptController extends Controller
         // Redirect to the next unanswered question
         return redirect()->route('student.attempts.take.single', [$attempt->id, $nextIndex]);
     }
+
+    /**
+     * Mark an unfinished attempt as complete (end with current answers).
+     */
+    public function complete(QuizAttempt $attempt)
+    {
+        if ($attempt->student_id !== $this->user()->id) {
+            abort(403);
+        }
+
+        if ($attempt->ended_at) {
+            if (request()->inertia()) {
+                return redirect()->back()->with('info', 'Attempt already completed.');
+            }
+
+            return redirect()->back();
+        }
+
+        $correctCount = $attempt->answers()->where('is_correct', true)->count();
+        $totalAnswered = $attempt->answers()->count();
+        $incorrectCount = $totalAnswered - $correctCount;
+
+        $attempt->update([
+            'ended_at' => now(),
+            'score' => $correctCount,
+            'total_correct' => $correctCount,
+            'total_incorrect' => $incorrectCount,
+        ]);
+
+        if (request()->inertia()) {
+            return redirect()->back()->with('success', 'Quiz marked as complete.');
+        }
+
+        return redirect()->back();
+    }
+
+    /**
+     * Archive an unfinished attempt so it no longer appears on the dashboard.
+     */
+    public function archive(QuizAttempt $attempt)
+    {
+        if ($attempt->student_id !== $this->user()->id) {
+            abort(403);
+        }
+
+        $attempt->update(['archived_at' => now()]);
+
+        if (request()->inertia()) {
+            return redirect()->back()->with('success', 'Unfinished quiz archived.');
+        }
+
+        return redirect()->back();
+    }
+
+    /**
+     * Unarchive an attempt so it appears again on the dashboard (if unfinished).
+     */
+    public function unarchive(QuizAttempt $attempt)
+    {
+        if ($attempt->student_id !== $this->user()->id) {
+            abort(403);
+        }
+
+        $attempt->update(['archived_at' => null]);
+
+        if (request()->inertia()) {
+            return redirect()->back()->with('success', 'Attempt unarchived.');
+        }
+
+        return redirect()->back();
+    }
 }

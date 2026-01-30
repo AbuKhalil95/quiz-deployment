@@ -22,9 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'can.access' => \App\Http\Middleware\EnsureUserCanAccess::class,
         ]);
 
-        // // Trust proxies to detect HTTPS correctly behind Railway's load balancer
-        // $middleware->trustProxies(at: '*');
-        // $middleware->trustHosts(at: ['*']);
+        // Trust proxies: Railway terminates HTTPS and forwards HTTP to the app.
+        // Without this, Laravel sees the request as HTTP and generates http:// URLs
+        // (e.g. pagination uses request()->url()), causing Mixed Content errors.
+        // Trusting X-Forwarded-Proto makes Laravel generate https:// everywhere.
+        $middleware->trustProxies(at: '*');
+        $middleware->trustHosts(at: ['*']);
 
         // Apply Inertia middleware globally
         // It only activates when controllers return Inertia responses

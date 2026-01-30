@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { route } from "ziggy-js";
-import { Eye, Play, ArrowLeft } from "lucide-react";
+import { Eye, Play, ArrowLeft, Check, Archive, ArchiveRestore } from "lucide-react";
 import { SmartPagination } from "@/components/common/SmartPagination";
 import { RelativeDate } from "@/components/common/RelativeDate";
 
@@ -27,6 +27,7 @@ interface Attempt {
     total_incorrect: number;
     created_at: string;
     ended_at: string | null;
+    archived_at: string | null;
     quiz: Quiz;
 }
 
@@ -110,7 +111,14 @@ export default function AttemptsIndex({ attempts }: Props) {
                                         attempts.data.map((attempt) => (
                                             <TableRow key={attempt.id}>
                                                 <TableCell className="font-medium">
-                                                    {attempt.quiz?.title ?? "N/A"}
+                                                    <span>
+                                                        {attempt.quiz?.title ?? "N/A"}
+                                                        {attempt.archived_at && (
+                                                            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                                                (archived)
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell>
                                                     <RelativeDate
@@ -127,7 +135,7 @@ export default function AttemptsIndex({ attempts }: Props) {
                                                     {attempt.total_incorrect}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
+                                                    <div className="flex justify-end items-center gap-1">
                                                         <Button
                                                             asChild
                                                             variant="default"
@@ -144,21 +152,89 @@ export default function AttemptsIndex({ attempts }: Props) {
                                                             </Link>
                                                         </Button>
                                                         {!attempt.ended_at && (
-                                                            <Button
-                                                                asChild
-                                                                variant="outline"
-                                                                size="sm"
-                                                            >
-                                                                <Link
-                                                                    href={route(
-                                                                        "student.attempts.resume",
-                                                                        attempt.id
-                                                                    )}
+                                                            <>
+                                                                <Button
+                                                                    asChild
+                                                                    variant="outline"
+                                                                    size="sm"
                                                                 >
-                                                                    <Play className="mr-2 h-4 w-4" />
-                                                                    Resume Quiz
-                                                                </Link>
-                                                            </Button>
+                                                                    <Link
+                                                                        href={route(
+                                                                            "student.attempts.resume",
+                                                                            attempt.id
+                                                                        )}
+                                                                    >
+                                                                        <Play className="mr-2 h-4 w-4" />
+                                                                        Resume
+                                                                    </Link>
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 shrink-0"
+                                                                    title="Complete"
+                                                                    onClick={() =>
+                                                                        router.post(
+                                                                            route(
+                                                                                "student.attempts.complete",
+                                                                                attempt.id
+                                                                            ),
+                                                                            {},
+                                                                            {
+                                                                                preserveScroll: true,
+                                                                            }
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Check className="h-4 w-4" />
+                                                                </Button>
+                                                                {attempt.archived_at ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                                                                        title="Unarchive"
+                                                                        onClick={() =>
+                                                                            router.post(
+                                                                                route(
+                                                                                    "student.attempts.unarchive",
+                                                                                    attempt.id
+                                                                                ),
+                                                                                {},
+                                                                                {
+                                                                                    preserveScroll: true,
+                                                                                }
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <ArchiveRestore className="h-4 w-4" />
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                                                                        title="Archive"
+                                                                        onClick={() =>
+                                                                            router.post(
+                                                                                route(
+                                                                                    "student.attempts.archive",
+                                                                                    attempt.id
+                                                                                ),
+                                                                                {},
+                                                                                {
+                                                                                    preserveScroll: true,
+                                                                                }
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <Archive className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
+                                                            </>
                                                         )}
                                                     </div>
                                                 </TableCell>

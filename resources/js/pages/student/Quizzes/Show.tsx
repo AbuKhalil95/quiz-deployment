@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { route } from "ziggy-js";
-import { Clock, BookOpen, ArrowLeft, Play } from "lucide-react";
+import { Clock, BookOpen, ArrowLeft, Lightbulb, Play } from "lucide-react";
 import { SubjectBadge } from "@/components/common/SubjectBadge";
 
 interface Subject {
@@ -20,6 +20,7 @@ interface Quiz {
     subject: Subject | null;
     questions: Array<{ id: number }>;
     total_questions?: number;
+    show_explanation?: boolean;
 }
 
 interface Props {
@@ -79,6 +80,13 @@ export default function QuizShow({ quiz }: Props) {
                                     <span>
                                         Questions: {quiz.questions.length}
                                     </span>
+                                </div>
+                            )}
+
+                            {quiz.show_explanation && (
+                                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                                    <Lightbulb className="h-4 w-4" />
+                                    <span>Hints available</span>
                                 </div>
                             )}
                         </div>

@@ -85,12 +85,14 @@ export default function Show({ quiz }: Props) {
                             Back to Quizzes
                         </Link>
                     </Button>
-                    <Button variant="outline" asChild>
-                        <Link href={route("admin.quizzes.edit", quiz.id)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit Quiz
-                        </Link>
-                    </Button>
+                    {quiz.mode !== "adaptive" && (
+                        <Button variant="outline" asChild>
+                            <Link href={route("admin.quizzes.edit", quiz.id)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit Quiz
+                            </Link>
+                        </Button>
+                    )}
                 </div>
 
                 <div className="grid gap-6">
@@ -132,16 +134,16 @@ export default function Show({ quiz }: Props) {
                                         {quiz.subject?.name || "N/A"}
                                     </p>
                                 </div>
-                                <div>
-                                    <Label className="text-muted-foreground">
-                                        Time Limit
-                                    </Label>
-                                    <p className="text-lg font-semibold">
-                                        {quiz.time_limit_minutes
-                                            ? `${quiz.time_limit_minutes} minutes`
-                                            : "No time limit"}
-                                    </p>
-                                </div>
+                                {quiz.time_limit_minutes && (
+                                    <div>
+                                        <Label className="text-muted-foreground">
+                                            Time Limit
+                                        </Label>
+                                        <p className="text-lg font-semibold">
+                                            {`${quiz.time_limit_minutes} minutes`}
+                                        </p>
+                                    </div>
+                                )}
                                 <div>
                                     <Label className="text-muted-foreground">
                                         Total Questions

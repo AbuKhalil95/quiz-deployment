@@ -15,9 +15,14 @@ class QuizAttempt extends Model
         'student_id',
         'started_at',
         'ended_at',
+        'archived_at',
         'score',
         'total_correct',
         'total_incorrect',
+    ];
+
+    protected $casts = [
+        'archived_at' => 'datetime',
     ];
 
     public function quiz()

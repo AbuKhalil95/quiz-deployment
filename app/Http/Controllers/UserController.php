@@ -6,7 +6,6 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Yajra\DataTables\DataTables;
 
 class UserController extends Controller
 {
@@ -24,43 +23,13 @@ class UserController extends Controller
             });
         }
 
-        // For Inertia requests: paginate after filtering
-        if ($request->inertia($request)) {
-            $users = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
+        $users = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
-            return \Inertia\Inertia::render('admin/Users/Index', [
-                'users' => $users,
-                'filters' => $request->only(['search']),
-            ]);
-        }
-
-        // Check if this is an AJAX request (DataTables) - but NOT Inertia
-        if ($this->isDataTablesRequest($request)) {
-            $data = User::query();
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
-
-                   <a href="javascript:void(0)" class="delete-user btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
-                     <i class="fas fa-trash"></i>
-                    </a>
-                   </div>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-
-        // Fallback to Blade view for legacy routes
-        return view('Dashboard.User.user');
+        return \Inertia\Inertia::render('admin/Users/Index', [
+            'users' => $users,
+            'filters' => $request->only(['search']),
+        ]);
     }
-
-    // <a href="javascript:void(0)" class="edit-user btn btn-primary btn-action" data-id="' . $row->id . '" data-toggle="tooltip" title="Edit">
-    //     <i class="fas fa-pencil-alt"></i>
-    // </a>
 
     public function updateRole(Request $request, User $user)
     {

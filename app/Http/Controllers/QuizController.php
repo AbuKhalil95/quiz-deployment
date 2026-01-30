@@ -8,7 +8,7 @@ use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Yajra\DataTables\DataTables;
+use Log;
 
 class QuizController extends Controller
 {
@@ -28,75 +28,24 @@ class QuizController extends Controller
         }
         $quizzes = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
-        // For Inertia requests, return Inertia response
-        if ($request->inertia($request)) {
-            return \Inertia\Inertia::render('admin/Quizzes/Index', [
-                'quizzes' => $quizzes,
-                'subjects' => Subject::select('id', 'name')->get(),
-                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
-                    ->select('id', 'question_text')
-                    ->get(),
-                'filters' => $request->only(['search']),
-            ]);
-        }
-
-        // Check if this is an AJAX request (DataTables) - but NOT Inertia
-        if ($this->isDataTablesRequest($request)) {
-            $data = Quiz::with(['subject']);
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('subject_name', function ($row) {
-                    return $row->subject ? $row->subject->name : '-';
-                })
-
-                ->editColumn('mode', function ($row) {
-                    return match ($row->mode) {
-                        'by_subject' => 'By Subject',
-                        'mixed_bag' => 'Mixed Bag',
-                        'adaptive' => 'Adaptive',
-                        default => $row->mode,
-                    };
-                })
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                        <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" title="View">View</a>
-
-                        <a href="javascript:void(0)" class="btn btn-primary edit-quiz" data-id="'.$row->id.'" title="Edit">
-                            <i class="fas fa-pencil-alt"></i>
-                        </a>
-
-                        <a href="javascript:void(0)" class="btn btn-danger delete-quiz" data-id="'.$row->id.'" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </a>
-                    </div>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-
-        // Fallback to Blade view for legacy routes
-        $subjects = Subject::select('id', 'name')->get();
-
-        return view('Dashboard/Quiz/quiz', compact('subjects'));
+        return \Inertia\Inertia::render('admin/Quizzes/Index', [
+            'quizzes' => $quizzes,
+            'subjects' => Subject::select('id', 'name')->get(),
+            'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                ->select('id', 'question_text')
+                ->get(),
+            'filters' => $request->only(['search']),
+        ]);
     }
 
     public function createForm(Request $request)
     {
-        if ($request->inertia($request)) {
-            return \Inertia\Inertia::render('admin/Quizzes/Create', [
-                'subjects' => Subject::select('id', 'name')->get(),
-                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
-                    ->select('id', 'question_text')
-                    ->get(),
-            ]);
-        }
-
-        // Legacy fallback
-        $subjects = Subject::select('id', 'name')->get();
-
-        return view('Dashboard/Quiz/quiz', compact('subjects'));
+        return \Inertia\Inertia::render('admin/Quizzes/Create', [
+            'subjects' => Subject::select('id', 'name')->get(),
+            'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                ->select('id', 'question_text')
+                ->get(),
+        ]);
     }
 
     public function create(Request $request)
@@ -108,6 +57,8 @@ class QuizController extends Controller
             'questions' => 'required|array|min:1',
             'questions.*.question_id' => 'required|exists:questions,id',
             'questions.*.order' => 'required|integer|min:1',
+            'time_limit_minutes' => 'nullable|integer|min:1',
+            'show_explanation' => 'required|boolean',
         ];
 
         // For mixed_bag mode, total_questions is required and must match questions count
@@ -154,19 +105,29 @@ class QuizController extends Controller
             ? count($request->questions)
             : $request->total_questions;
 
+        $showExplanation = filter_var($request->input('show_explanation'), FILTER_VALIDATE_BOOLEAN);
+
         $quiz = Quiz::create([
             'title' => $request->title,
             'mode' => $request->mode,
             'subject_id' => $request->subject_id,
             'total_questions' => $totalQuestions,
+            'time_limit_minutes' => $request->time_limit_minutes,
+            'show_explanation' => $showExplanation, // true or false
             'created_by' => Auth::id(),
         ]);
 
+        Log::info('Saved quiz:', [
+            'id' => $quiz->id,
+            'show_explanation' => $quiz->show_explanation,
+            'raw_request' => $request->all(),
+        ]);
         foreach ($request->questions as $q) {
             QuizQuestion::create([
                 'quiz_id' => $quiz->id,
                 'question_id' => $q['question_id'],
                 'order' => $q['order'],
+                'show_explanation' => $q['show_explanation'] ?? false,
             ]);
         }
 
@@ -312,6 +273,7 @@ class QuizController extends Controller
             'title' => 'required|string|max:255',
             'mode' => 'required|in:by_subject,mixed_bag',
             'subject_id' => 'nullable|exists:subjects,id',
+            'time_limit_minutes' => 'nullable|integer|min:1',
         ];
 
         // For mixed_bag mode, total_questions is required
@@ -332,6 +294,7 @@ class QuizController extends Controller
         $quiz->mode = $request->mode;
         $quiz->subject_id = $request->subject_id;
         $quiz->total_questions = $totalQuestions;
+        $quiz->time_limit_minutes = $request->time_limit_minutes;
         $quiz->save();
 
         // For Inertia requests

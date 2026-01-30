@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
-use Yajra\DataTables\DataTables;
 
 class QuestionController extends Controller
 {
@@ -69,97 +68,54 @@ class QuestionController extends Controller
         }
         $questions = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
-        // For Inertia requests, return Inertia response
-        if ($request->inertia($request)) {
-            // Map questions to ensure relationships are properly serialized
-            $questions->getCollection()->transform(function ($question) {
-                return [
-                    'id' => $question->id,
-                    'subject_id' => $question->subject_id,
-                    'question_text' => $question->question_text,
-                    'state' => $question->state,
-                    'assigned_to' => $question->assigned_to,
-                    'assignedTo' => $question->assignedTo ? [
-                        'id' => $question->assignedTo->id,
-                        'name' => $question->assignedTo->name,
-                    ] : null,
-                    'creator' => $question->creator ? [
-                        'id' => $question->creator->id,
-                        'name' => $question->creator->name,
-                        'roles' => $question->creator->roles->map(function ($role) {
-                            return [
-                                'id' => $role->id,
-                                'name' => $role->name,
-                            ];
-                        }),
-                    ] : null,
-                    'subject' => $question->subject ? [
-                        'id' => $question->subject->id,
-                        'name' => $question->subject->name,
-                    ] : null,
-                    'tags' => $question->tags->map(function ($tag) {
+        // Map questions to ensure relationships are properly serialized
+        $questions->getCollection()->transform(function ($question) {
+            return [
+                'id' => $question->id,
+                'subject_id' => $question->subject_id,
+                'question_text' => $question->question_text,
+                'state' => $question->state,
+                'assigned_to' => $question->assigned_to,
+                'assignedTo' => $question->assignedTo ? [
+                    'id' => $question->assignedTo->id,
+                    'name' => $question->assignedTo->name,
+                ] : null,
+                'creator' => $question->creator ? [
+                    'id' => $question->creator->id,
+                    'name' => $question->creator->name,
+                    'roles' => $question->creator->roles->map(function ($role) {
                         return [
-                            'id' => $tag->id,
-                            'tag_text' => $tag->tag_text,
+                            'id' => $role->id,
+                            'name' => $role->name,
                         ];
                     }),
-                    'options' => $question->options->map(function ($option) {
-                        return [
-                            'id' => $option->id,
-                            'option_text' => $option->option_text,
-                            'is_correct' => $option->is_correct,
-                        ];
-                    }),
-                ];
-            });
+                ] : null,
+                'subject' => $question->subject ? [
+                    'id' => $question->subject->id,
+                    'name' => $question->subject->name,
+                ] : null,
+                'tags' => $question->tags->map(function ($tag) {
+                    return [
+                        'id' => $tag->id,
+                        'tag_text' => $tag->tag_text,
+                    ];
+                }),
+                'options' => $question->options->map(function ($option) {
+                    return [
+                        'id' => $option->id,
+                        'option_text' => $option->option_text,
+                        'is_correct' => $option->is_correct,
+                    ];
+                }),
+            ];
+        });
 
-            return \Inertia\Inertia::render('admin/Questions/Index', [
-                'questions' => $questions,
-                'subjects' => Subject::select('id', 'name')->get(),
-                'tags' => \App\Models\Tag::select('id', 'tag_text')->get(),
-                'filters' => $request->only(['search', 'tab', 'subject_id']),
-            ]);
-        }
-
-        // Check if this is an AJAX request (DataTables) - but NOT Inertia
-        if ($this->isDataTablesRequest($request)) {
-            $data = Question::with(['subject']);
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('subject_name', function ($row) {
-                    return $row->subject ? $row->subject->name : '';
-                })
-                ->addColumn('question_text', function ($row) {
-                    $text = $row->question_text;
-                    $shortText = strlen($text) > 100 ? substr($text, 0, 100).'...' : $text;
-
-                    return '<span class="short-text">'.$shortText.'</span>
-                <span class="full-text" style="display:none;">'.$text.'</span>
-                '.(strlen($text) > 100 ? '<a href="javascript:void(0)" class="toggle-text">Show More</a>' : '');
-                })
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
-
-                     <a href="javascript:void(0)" class="edit-question btn btn-primary btn-action" data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
-                      <i class="fas fa-pencil-alt"></i>
-                     </a>
-
-                    <a href="javascript:void(0)" class="delete-question btn btn-danger" data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
-                      <i class="fas fa-trash"></i>
-                      </a>
-                     </div>';
-                })
-                ->rawColumns(['action', 'question_text'])
-                ->make(true);
-        }
-
-        // Fallback to Blade view for legacy routes
-        $subjects = Subject::select('id', 'name')->get();
-
-        return view('Dashboard/Question/question', compact('subjects'));
+        return \Inertia\Inertia::render('admin/Questions/Index', [
+            'questions' => $questions,
+            'subjects' => Subject::select('id', 'name')->get(),
+            'tags' => \App\Models\Tag::select('id', 'tag_text')->get(),
+            'filters' => $request->only(['search', 'tab', 'subject_id']),
+        ]);
     }
 
     /**
@@ -167,17 +123,10 @@ class QuestionController extends Controller
      */
     public function createForm(Request $request)
     {
-        if ($request->inertia($request)) {
-            return \Inertia\Inertia::render('admin/Questions/Create', [
-                'subjects' => Subject::select('id', 'name')->get(),
-                'tags' => \App\Models\Tag::select('id', 'tag_text')->get(),
-            ]);
-        }
-
-        // Legacy fallback
-        $subjects = Subject::select('id', 'name')->get();
-
-        return view('Dashboard/Question/question', compact('subjects'));
+        return \Inertia\Inertia::render('admin/Questions/Create', [
+            'subjects' => Subject::select('id', 'name')->get(),
+            'tags' => \App\Models\Tag::select('id', 'tag_text')->get(),
+        ]);
     }
 
     /**
