@@ -4,37 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\permissions;
 use Illuminate\Http\Request;
-use Yajra\DataTables\DataTables;
 
 class PermissionsController extends Controller
 {
     public function index(Request $request)
     {
-        if ($request->ajax()) {
-
-            $data = permissions::query();
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
-
-                     <a href="javascript:void(0)" class="edit-permission btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
-                      <i class="fas fa-pencil-alt"></i>
-                     </a>
-
-                    <a href="javascript:void(0)" class="delete-permission btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
-                      <i class="fas fa-trash"></i>
-                      </a>
-                     </div>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-
-        return view('Dashboard/Permission/permission');
+        return redirect()->route('admin.dashboard');
     }
 
     /**

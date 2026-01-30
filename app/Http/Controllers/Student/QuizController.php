@@ -22,7 +22,7 @@ class QuizController extends Controller
         $quiz = $attempt->quiz()->with('questions.options', 'questions.subject', 'questions.tags')->first();
         $questions = $quiz->questions;
 
-        if (!isset($questions[$questionIndex])) {
+        if (! isset($questions[$questionIndex])) {
             $attempt->update([
                 'ended_at' => now(),
                 'score' => $attempt->answers()->where('is_correct', true)->count(),
@@ -47,15 +47,14 @@ class QuizController extends Controller
             $endsAtTimestamp = null; // الاختبار بدون وقت
         }
 
-
-
         $explanations = $question->explanations ?? null;
         $showExplanationAll = $question->pivot->show_explanation ?? false;
+
         return \Inertia\Inertia::render('student/Quizzes/Take', [
             'attempt' => $attempt,
             'question' => $question,
             'questionIndex' => $questionIndex,
-            'questions' => $questions->map(fn($q) => [
+            'questions' => $questions->map(fn ($q) => [
                 'id' => $q->id,
                 'show_explanation' => $q->pivot->show_explanation ?? false,
             ]),
@@ -66,7 +65,6 @@ class QuizController extends Controller
             'showExplanationAll' => $showExplanationAll,
         ]);
     }
-
 
     /**
      * Submit a single question and redirect to the next question.
@@ -134,8 +132,9 @@ class QuizController extends Controller
                 'mode' => $quiz->mode,
                 'time_limit_minutes' => $quiz->time_limit_minutes,
                 'subject' => $quiz->subject,
-                'questions' => $quiz->questions->map(fn($q) => ['id' => $q->id]),
+                'questions' => $quiz->questions->map(fn ($q) => ['id' => $q->id]),
                 'total_questions' => $quiz->total_questions,
+                'show_explanation' => (bool) $quiz->show_explanation,
             ],
         ]);
     }
@@ -170,4 +169,3 @@ class QuizController extends Controller
         return redirect()->route('student.attempts.take.single', [$attempt->id, 0]);
     }
 }
-

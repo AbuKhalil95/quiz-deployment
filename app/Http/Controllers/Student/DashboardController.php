@@ -28,6 +28,7 @@ class DashboardController extends Controller
         $unfinishedAttempts = QuizAttempt::with('quiz.questions')
             ->where('student_id', Auth::id())
             ->whereNull('ended_at')
+            ->whereNull('archived_at')
             ->orderByDesc('created_at')
             ->take(5)
             ->get();

@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Log;
-use Yajra\DataTables\DataTables;
 
 class QuizController extends Controller
 {
@@ -19,85 +18,34 @@ class QuizController extends Controller
         $query = Quiz::with('subject');
 
         // Teachers can only see their own quizzes
-        if ($user && $user->hasRole('teacher') && !$user->hasRole('admin')) {
+        if ($user && $user->hasRole('teacher') && ! $user->hasRole('admin')) {
             $query->where('created_by', $user->id);
         }
 
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $query->where('title', 'like', "%{$search}%");
         }
         $quizzes = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
-        // For Inertia requests, return Inertia response
-        if ($request->inertia($request)) {
-            return \Inertia\Inertia::render('admin/Quizzes/Index', [
-                'quizzes' => $quizzes,
-                'subjects' => Subject::select('id', 'name')->get(),
-                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
-                    ->select('id', 'question_text')
-                    ->get(),
-                'filters' => $request->only(['search']),
-            ]);
-        }
-
-        // Check if this is an AJAX request (DataTables) - but NOT Inertia
-        if ($this->isDataTablesRequest($request)) {
-            $data = Quiz::with(['subject']);
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('subject_name', function ($row) {
-                    return $row->subject ? $row->subject->name : '-';
-                })
-
-                ->editColumn('mode', function ($row) {
-                    return match ($row->mode) {
-                        'by_subject' => 'By Subject',
-                        'mixed_bag' => 'Mixed Bag',
-                        'adaptive' => 'Adaptive',
-                        default => $row->mode,
-                    };
-                })
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                        <a href="javascript:void(0)" class="btn btn-info view" data-id="' . $row->id . '" title="View">View</a>
-
-                        <a href="javascript:void(0)" class="btn btn-primary edit-quiz" data-id="' . $row->id . '" title="Edit">
-                            <i class="fas fa-pencil-alt"></i>
-                        </a>
-
-                        <a href="javascript:void(0)" class="btn btn-danger delete-quiz" data-id="' . $row->id . '" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </a>
-                    </div>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-
-        // Fallback to Blade view for legacy routes
-        $subjects = Subject::select('id', 'name')->get();
-
-        return view('Dashboard/Quiz/quiz', compact('subjects'));
+        return \Inertia\Inertia::render('admin/Quizzes/Index', [
+            'quizzes' => $quizzes,
+            'subjects' => Subject::select('id', 'name')->get(),
+            'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                ->select('id', 'question_text')
+                ->get(),
+            'filters' => $request->only(['search']),
+        ]);
     }
 
     public function createForm(Request $request)
     {
-        if ($request->inertia($request)) {
-            return \Inertia\Inertia::render('admin/Quizzes/Create', [
-                'subjects' => Subject::select('id', 'name')->get(),
-                'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
-                    ->select('id', 'question_text')
-                    ->get(),
-            ]);
-        }
-
-        // Legacy fallback
-        $subjects = Subject::select('id', 'name')->get();
-
-        return view('Dashboard/Quiz/quiz', compact('subjects'));
+        return \Inertia\Inertia::render('admin/Quizzes/Create', [
+            'subjects' => Subject::select('id', 'name')->get(),
+            'questions' => \App\Models\Question::where('state', \App\Models\Question::STATE_DONE)
+                ->select('id', 'question_text')
+                ->get(),
+        ]);
     }
 
     public function create(Request $request)
@@ -119,7 +67,7 @@ class QuizController extends Controller
             // Convert questions rule to array to append size rule
             $rules['questions'] = array_merge(
                 explode('|', $rules['questions']),
-                ['size:' . $request->total_questions]
+                ['size:'.$request->total_questions]
             );
         } else {
             // For by_subject mode, total_questions is inferred from questions count
@@ -136,7 +84,7 @@ class QuizController extends Controller
                 ->pluck('id')
                 ->toArray();
 
-            if (!empty($nonDoneQuestions)) {
+            if (! empty($nonDoneQuestions)) {
                 if ($request->inertia($request)) {
                     return $this->redirectWithError(
                         $request,
@@ -172,7 +120,7 @@ class QuizController extends Controller
         Log::info('Saved quiz:', [
             'id' => $quiz->id,
             'show_explanation' => $quiz->show_explanation,
-            'raw_request' => $request->all()
+            'raw_request' => $request->all(),
         ]);
         foreach ($request->questions as $q) {
             QuizQuestion::create([
@@ -268,7 +216,7 @@ class QuizController extends Controller
             ->where('id', $questionId)
             ->first();
 
-        if (!$quizQuestion) {
+        if (! $quizQuestion) {
             return response()->json(['error' => 'Question not found'], 404);
         }
 
@@ -317,7 +265,7 @@ class QuizController extends Controller
     {
         $quiz = Quiz::find($id);
 
-        if (!$quiz) {
+        if (! $quiz) {
             abort(404, 'Quiz not found');
         }
 
@@ -364,7 +312,7 @@ class QuizController extends Controller
     {
         $quiz = Quiz::find($id);
 
-        if (!$quiz) {
+        if (! $quiz) {
             abort(404, 'Quiz not found');
         }
 

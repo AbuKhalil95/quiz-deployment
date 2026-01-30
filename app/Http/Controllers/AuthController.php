@@ -25,13 +25,7 @@ class AuthController extends Controller
             return redirect()->route('student.dashboard');
         }
 
-        // For Inertia requests, render Inertia login page
-        if ($request->inertia($request)) {
-            return \Inertia\Inertia::render('auth/Login');
-        }
-
-        // Legacy Blade view
-        return view('auth.login');
+        return \Inertia\Inertia::render('auth/Login');
     }
 
     /**
@@ -77,8 +71,7 @@ class AuthController extends Controller
                 return redirect()->route('student.dashboard');
             }
 
-            // fallback
-            return redirect()->route('users.index');
+            return redirect()->route('admin.dashboard');
         }
 
         return back()
@@ -93,10 +86,14 @@ class AuthController extends Controller
     {
         $user = $this->user();
         if ($user) {
-            return redirect()->route('users.index');
+            if ($user->hasRole('admin') || $user->hasRole('teacher')) {
+                return redirect()->route('admin.dashboard');
+            }
+
+            return redirect()->route('student.dashboard');
         }
 
-        return view('auth.register');
+        return \Inertia\Inertia::render('auth/Register');
     }
 
     /**
@@ -139,7 +136,7 @@ class AuthController extends Controller
             return redirect()->route('student.dashboard');
         }
 
-        return redirect()->route('users.index');
+        return redirect()->route('admin.dashboard');
     }
 
     /**
@@ -152,14 +149,10 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Check if this is an Inertia request
-        if ($request->inertia($request)) {
-            // Use Inertia::location() for full page navigation to login
-            // This ensures we get the correct login page (Inertia or Blade)
+        if ($request->inertia()) {
             return \Inertia\Inertia::location(route('login'));
         }
 
-        // For non-Inertia requests, use regular redirect
         return redirect()->route('login');
     }
 }

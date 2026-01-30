@@ -2,49 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Role;
 use App\Models\Role_User;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Yajra\DataTables\DataTables;
 
 class RoleUserController extends Controller
 {
     public function index(Request $request)
     {
-        if ($request->ajax()) {
-
-            $data = Role_User::with(['user', 'role']);
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('user_name', function ($row) {
-                    return $row->user ? $row->user->name : '';
-                })
-                ->addColumn('role_name', function ($row) {
-                    return $row->role ? $row->role->name : '';
-                })
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
-
-                     <a href="javascript:void(0)" class="edit-role-user btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
-                      <i class="fas fa-pencil-alt"></i>
-                     </a>
-
-                    <a href="javascript:void(0)" class="delete-role-user btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
-                      <i class="fas fa-trash"></i>
-                      </a>
-                     </div>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-        $users = User::select('id', 'name')->get();
-        $roles = Role::select('id', 'name')->get();
-
-        return view('Dashboard/Role-User/role-user', compact('users', 'roles'));
+        return redirect()->route('admin.dashboard');
     }
 
     /**

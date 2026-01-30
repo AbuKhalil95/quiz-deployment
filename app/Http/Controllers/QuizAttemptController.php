@@ -2,12 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Quiz;
 use App\Models\QuizAttempt;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Yajra\DataTables\DataTables;
 
 class QuizAttemptController extends Controller
 {
@@ -59,44 +56,6 @@ class QuizAttemptController extends Controller
             'attempts' => $attempts,
             'filters' => $request->only(['search']),
         ]);
-
-        // Check if this is an AJAX request (DataTables) - but NOT Inertia
-        if ($this->isDataTablesRequest($request)) {
-            $data = QuizAttempt::with(['quiz', 'student']);
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('quiz_title', fn ($row) => $row->quiz ? $row->quiz->title : '')
-                ->addColumn('student_name', fn ($row) => $row->student ? $row->student->name : '')
-                ->addColumn('score', function ($row) {
-                    $totalQuestions = $row->quiz?->questions->count() ?? 0;
-
-                    return $row->score.' / '.$totalQuestions;
-                })
-                ->addColumn('action', function ($row) {
-                    return '
-                         <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
-
-                     <a href="javascript:void(0)" class="edit-attempt btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
-                      <i class="fas fa-pencil-alt"></i>
-                     </a>
-
-                    <a href="javascript:void(0)" class="delete-attempt btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
-                      <i class="fas fa-trash"></i>
-                      </a>
-                     </div>
-                    ';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-
-        // Fallback to Blade view for legacy routes
-        $quizzes = Quiz::select('id', 'title')->get();
-        $students = User::select('id', 'name')->get();
-
-        return view('Dashboard/Quiz-Attempt/attempt', compact('quizzes', 'students'));
     }
 
     public function create(Request $request)

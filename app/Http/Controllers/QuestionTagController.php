@@ -2,49 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Question;
 use App\Models\QuestionTag;
-use App\Models\Tag;
 use Illuminate\Http\Request;
-use Yajra\DataTables\DataTables;
 
 class QuestionTagController extends Controller
 {
     public function index(Request $request)
     {
-        if ($request->ajax()) {
-
-            $data = QuestionTag::with(['question', 'tag']);
-
-            return DataTables::of($data)
-                ->addIndexColumn()
-                ->addColumn('question_text', function ($row) {
-                    return $row->question ? $row->question->question_text : '';
-                })
-                ->addColumn('tag_text', function ($row) {
-                    return $row->tag ? $row->tag->tag_text : '';
-                })
-                ->addColumn('action', function ($row) {
-                    return '
-                    <div class="d-grid gap-2 d-md-block">
-                    <a href="javascript:void(0)" class="btn btn-info  view" data-id="'.$row->id.'" data-toggle="tooltip" title="View">View</a>
-
-                     <a href="javascript:void(0)" class="edit-question-tag btn btn-primary btn-action " data-id="'.$row->id.'" data-toggle="tooltip" title="Edit">
-                      <i class="fas fa-pencil-alt"></i>
-                     </a>
-
-                    <a href="javascript:void(0)" class="delete-question-tag btn btn-danger  " data-id="'.$row->id.'" data-toggle="tooltip" title="Delete">
-                      <i class="fas fa-trash"></i>
-                      </a>
-                     </div>';
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
-        $questions = Question::select('id', 'question_text')->get();
-        $tags = Tag::select('id', 'tag_text')->get();
-
-        return view('Dashboard/Question-Tag/question-tag', compact('questions', 'tags'));
+        return redirect()->route('admin.dashboard');
     }
 
     /**

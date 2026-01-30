@@ -1,17 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\TagSubjectController;
-use App\Http\Controllers\PermissionRoleController;
-use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\QuestionController;
-use App\Http\Controllers\QuestionOptionController;
-use App\Http\Controllers\QuestionTagController;
-use App\Http\Controllers\QuizAnswerController;
 use App\Http\Controllers\QuizAttemptController;
 use App\Http\Controllers\QuizController;
-use App\Http\Controllers\QuizQuestionController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\RoleUserController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UserController;
@@ -34,38 +26,6 @@ Route::middleware(['auth', 'can.access'])->group(function () {
 
 // Admin/Teacher routes - These will use Inertia React
 Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
-
-    // Role
-    Route::get('/admin/roles', [RoleController::class, 'index'])->name('admin.roles.index');
-    Route::get('/admin/roles/{id}', [RoleController::class, 'show'])->name('admin.roles.show');
-    Route::post('/admin/roles', [RoleController::class, 'create'])->name('admin.roles.create');
-    Route::get('/admin/roles/{id}/edit', [RoleController::class, 'edit'])->name('admin.roles.edit');
-    Route::post('/admin/roles/{id}', [RoleController::class, 'update'])->name('admin.roles.update');
-    Route::delete('/admin/roles/{id}', [RoleController::class, 'destroy'])->name('admin.roles.destroy');
-
-    // RoleUser
-    Route::get('/admin/role-users', [RoleUserController::class, 'index'])->name('admin.roleUsers.index');
-    Route::get('/admin/role-users/{id}', [RoleUserController::class, 'show'])->name('admin.roleUsers.show');
-    Route::post('/admin/role-users', [RoleUserController::class, 'create'])->name('admin.roleUsers.create');
-    Route::get('/admin/role-users/{id}/edit', [RoleUserController::class, 'edit'])->name('admin.roleUsers.edit');
-    Route::post('/admin/role-users/{id}', [RoleUserController::class, 'update'])->name('admin.roleUsers.update');
-    Route::delete('/admin/role-users/{id}', [RoleUserController::class, 'destroy'])->name('admin.roleUsers.destroy');
-
-    // Permission
-    Route::get('/admin/permissions', [PermissionsController::class, 'index'])->name('admin.permissions.index');
-    Route::get('/admin/permissions/{id}', [PermissionsController::class, 'show'])->name('admin.permissions.show');
-    Route::post('/admin/permissions', [PermissionsController::class, 'create'])->name('admin.permissions.create');
-    Route::get('/admin/permissions/{id}/edit', [PermissionsController::class, 'edit'])->name('admin.permissions.edit');
-    Route::post('/admin/permissions/{id}', [PermissionsController::class, 'update'])->name('admin.permissions.update');
-    Route::delete('/admin/permissions/{id}', [PermissionsController::class, 'destroy'])->name('admin.permissions.destroy');
-
-    // PermissionRole
-    Route::get('/admin/permission-roles', [PermissionRoleController::class, 'index'])->name('admin.permissionRoles.index');
-    Route::get('/admin/permission-roles/{id}', [PermissionRoleController::class, 'show'])->name('admin.permissionRoles.show');
-    Route::post('/admin/permission-roles', [PermissionRoleController::class, 'create'])->name('admin.permissionRoles.create');
-    Route::get('/admin/permission-roles/{id}/edit', [PermissionRoleController::class, 'edit'])->name('admin.permissionRoles.edit');
-    Route::post('/admin/permission-roles/{id}', [PermissionRoleController::class, 'update'])->name('admin.permissionRoles.update');
-    Route::delete('/admin/permission-roles/{id}', [PermissionRoleController::class, 'destroy'])->name('admin.permissionRoles.destroy');
 
     // Subject
     Route::get('/admin/subjects', [SubjectController::class, 'index'])->name('admin.subjects.index');
@@ -110,14 +70,6 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
 
     });
 
-    // QuestionOption
-    Route::get('/admin/question-options', [QuestionOptionController::class, 'index'])->name('admin.questionOptions.index');
-    Route::get('/admin/question-options/{id}', [QuestionOptionController::class, 'show'])->name('admin.questionOptions.show');
-    Route::post('/admin/question-options', [QuestionOptionController::class, 'create'])->name('admin.questionOptions.create');
-    Route::get('/admin/question-options/{id}/edit', [QuestionOptionController::class, 'edit'])->name('admin.questionOptions.edit');
-    Route::post('/admin/question-options/{id}', [QuestionOptionController::class, 'update'])->name('admin.questionOptions.update');
-    Route::delete('/admin/question-options/{id}', [QuestionOptionController::class, 'destroy'])->name('admin.questionOptions.destroy');
-
     // Quiz (admin/teacher)
     Route::get('/admin/quizzes', [QuizController::class, 'index'])->name('admin.quizzes.index');
     Route::get('/admin/quizzes/create', [QuizController::class, 'createForm'])->name('admin.quizzes.createForm');
@@ -138,26 +90,9 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
 
     });
 
-    // QuizQuestion
-    Route::get('/admin/quiz-questions', [QuizQuestionController::class, 'index'])->name('admin.quizQuestions.index');
-    Route::get('/admin/quiz-questions/{id}', [QuizQuestionController::class, 'show'])->name('admin.quizQuestions.show');
-    Route::post('/admin/quiz-questions', [QuizQuestionController::class, 'create'])->name('admin.quizQuestions.create');
-    Route::get('/admin/quiz-questions/{id}/edit', [QuizQuestionController::class, 'edit'])->name('admin.quizQuestions.edit');
-    Route::post('/admin/quiz-questions/{id}', [QuizQuestionController::class, 'update'])->name('admin.quizQuestions.update');
-    Route::delete('/admin/quiz-questions/{id}', [QuizQuestionController::class, 'destroy'])->name('admin.quizQuestions.destroy');
-
-    // Attempt (for teachers/admin to view)
+    // Attempt (for teachers/admin to view - index + show only, linked from nav)
     Route::get('/admin/attempts', [QuizAttemptController::class, 'index'])->name('admin.attempts.index');
     Route::get('/admin/attempts/{id}', [QuizAttemptController::class, 'show'])->name('admin.attempts.show');
-    Route::post('/admin/attempts', [QuizAttemptController::class, 'create'])->name('admin.attempts.create');
-    Route::get('/admin/attempts/{id}/edit', [QuizAttemptController::class, 'edit'])->name('admin.attempts.edit');
-    Route::post('/admin/attempts/{id}', [QuizAttemptController::class, 'update'])->name('admin.attempts.update');
-    Route::delete('/admin/attempts/{id}', [QuizAttemptController::class, 'destroy'])->name('admin.attempts.destroy');
-
-    // Answers (for reporting)
-    Route::get('/admin/answers', [QuizAnswerController::class, 'index'])->name('admin.answers.index');
-    Route::get('/admin/answers/{id}', [QuizAnswerController::class, 'show'])->name('admin.answers.show');
-    Route::post('/admin/answers', [QuizAnswerController::class, 'create'])->name('admin.answers.create');
 
     // Tag
     Route::get('/admin/tags', [TagController::class, 'index'])->name('admin.tags.index');
@@ -168,14 +103,6 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::get('/admin/tags/{id}/edit', [TagController::class, 'edit'])->name('admin.tags.edit');
     Route::post('/admin/tags/{id}', [TagController::class, 'update'])->name('admin.tags.update');
     Route::delete('/admin/tags/{id}', [TagController::class, 'destroy'])->name('admin.tags.destroy');
-
-    // QuestionTag
-    Route::get('/admin/question-tags', [QuestionTagController::class, 'index'])->name('admin.questionTags.index');
-    Route::get('/admin/question-tags/{id}', [QuestionTagController::class, 'show'])->name('admin.questionTags.show');
-    Route::post('/admin/question-tags', [QuestionTagController::class, 'create'])->name('admin.questionTags.create');
-    Route::get('/admin/question-tags/{id}/edit', [QuestionTagController::class, 'edit'])->name('admin.questionTags.edit');
-    Route::post('/admin/question-tags/{id}', [QuestionTagController::class, 'update'])->name('admin.questionTags.update');
-    Route::delete('/admin/question-tags/{id}', [QuestionTagController::class, 'destroy'])->name('admin.questionTags.destroy');
 
     // Tag-Subject Pivot Relationships
     Route::get('/admin/tag-subjects', [TagSubjectController::class, 'index'])->name('admin.tagSubjects.index');
