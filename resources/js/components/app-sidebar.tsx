@@ -15,6 +15,7 @@ import {
     Tag,
     Book,
     Link2,
+    AlertCircle,
 } from "lucide-react";
 import AppLogo from "./app-logo";
 
@@ -61,6 +62,13 @@ const mainNavItems = [
                 title: "Tags",
                 href: "/admin/tags",
                 icon: Tag,
+                role: ["admin", "teacher"],
+            },
+
+            {
+                title: "Question Reports",
+                href: "/admin/question-reports",
+                icon: AlertCircle,
                 role: ["admin", "teacher"],
             },
         ],

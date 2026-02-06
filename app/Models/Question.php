@@ -74,7 +74,7 @@ class Question extends Model
      */
     public function canBeAssigned(): bool
     {
-        return $this->state === self::STATE_INITIAL && ! $this->assigned_to;
+        return $this->state === self::STATE_INITIAL && !$this->assigned_to;
     }
 
     /**
@@ -82,7 +82,7 @@ class Question extends Model
      */
     public function assignTo(int $userId): bool
     {
-        if (! $this->canBeAssigned()) {
+        if (!$this->canBeAssigned()) {
             return false;
         }
 
@@ -102,7 +102,7 @@ class Question extends Model
     public function canBeUnassigned(int $userId, bool $isAdmin): bool
     {
         // Must be assigned to someone
-        if (! $this->assigned_to) {
+        if (!$this->assigned_to) {
             return false;
         }
 
@@ -120,7 +120,7 @@ class Question extends Model
      */
     public function unassign(int $changedBy): bool
     {
-        if (! $this->assigned_to) {
+        if (!$this->assigned_to) {
             return false;
         }
 
@@ -141,7 +141,7 @@ class Question extends Model
     public function changeState(string $newState, ?string $notes = null): bool
     {
         $validStates = [self::STATE_INITIAL, self::STATE_UNDER_REVIEW, self::STATE_DONE];
-        if (! in_array($newState, $validStates)) {
+        if (!in_array($newState, $validStates)) {
             return false;
         }
 
@@ -171,7 +171,7 @@ class Question extends Model
         $this->state = self::STATE_UNDER_REVIEW;
 
         // If not assigned and assignToUserId is provided, assign it
-        if (! $this->assigned_to && $assignToUserId) {
+        if (!$this->assigned_to && $assignToUserId) {
             $this->assigned_to = $assignToUserId;
         }
 
@@ -272,5 +272,10 @@ class Question extends Model
     {
         return $this->belongsToMany(User::class, 'question_flags')
             ->withTimestamps();
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(QuestionReport::class);
     }
 }

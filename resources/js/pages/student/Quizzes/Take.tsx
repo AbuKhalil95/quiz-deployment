@@ -18,6 +18,12 @@ import {
 } from "lucide-react";
 import { SubjectBadge } from "@/components/common/SubjectBadge";
 import { TagBadge } from "@/components/common/TagBadge";
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 interface Props {
     attempt: { id: number };
@@ -29,6 +35,7 @@ interface Props {
     ends_at_timestamp?: number | null;
     explanations?: Record<string, string> | null;
     showExplanationAll?: boolean; // ✅ من backend
+    isReported?: boolean;
 }
 
 export default function QuizTake({
@@ -41,6 +48,7 @@ export default function QuizTake({
     ends_at_timestamp,
     explanations = null,
     showExplanationAll = false,
+    isReported = false,
 }: Props) {
     const form = useForm({ answer: selectedAnswer });
     const qIndex = Number(questionIndex);
@@ -48,6 +56,10 @@ export default function QuizTake({
     const isLastQuestion = qIndex === questions.length - 1;
     const allowNavigation = useRef(false);
     const timerFinishedRef = useRef(false);
+    const [flagged, setFlagged] = useState(isFlagged);
+    const [reported, setReported] = useState(isReported);
+    const [showReportInput, setShowReportInput] = useState(false);
+    const [reportReason, setReportReason] = useState("");
 
     const TIMER_STORAGE_KEY = `quiz_attempt_time_${attempt.id}`;
 
@@ -127,7 +139,7 @@ export default function QuizTake({
             {
                 onSuccess: () =>
                     router.visit(route("student.attempts.show", attempt.id)),
-            }
+            },
         );
     };
 
@@ -138,6 +150,8 @@ export default function QuizTake({
         if (!showExplanationAll) setShowExplanation(false);
         setShowSubjectAndTags(false);
         allowNavigation.current = false;
+        setFlagged(isFlagged);
+        setReported(isReported);
     }, [question.id]);
 
     const handleNext = (e: React.FormEvent) => {
@@ -145,7 +159,7 @@ export default function QuizTake({
 
         if (!form.data.answer) {
             router.visit(
-                route("student.attempts.take.single", [attempt.id, qIndex + 1])
+                route("student.attempts.take.single", [attempt.id, qIndex + 1]),
             );
             return;
         }
@@ -158,10 +172,10 @@ export default function QuizTake({
                         route("student.attempts.take.single", [
                             attempt.id,
                             qIndex + 1,
-                        ])
+                        ]),
                     );
                 },
-            }
+            },
         );
     };
 
@@ -174,9 +188,9 @@ export default function QuizTake({
                 {
                     onSuccess: () =>
                         router.visit(
-                            route("student.attempts.show", attempt.id)
+                            route("student.attempts.show", attempt.id),
                         ),
-                }
+                },
             );
             return;
         }
@@ -191,7 +205,7 @@ export default function QuizTake({
     const handlePrevious = () => {
         if (qIndex > 0) {
             router.visit(
-                route("student.attempts.take.single", [attempt.id, qIndex - 1])
+                route("student.attempts.take.single", [attempt.id, qIndex - 1]),
             );
         }
     };
@@ -281,47 +295,163 @@ export default function QuizTake({
                                                     >
                                                         ···
                                                     </span>
-                                                )
+                                                ),
                                             )}
                                     </>
                                 )}
                             </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                    if (isFlagged) {
-                                        router.delete(
-                                            route(
-                                                "student.questions.unflag",
-                                                question.id
-                                            ),
-                                            { preserveScroll: true }
-                                        );
-                                    } else {
-                                        router.post(
-                                            route(
-                                                "student.questions.flag",
-                                                question.id
-                                            ),
-                                            {},
-                                            { preserveScroll: true }
-                                        );
-                                    }
-                                }}
-                                className={
-                                    isFlagged
-                                        ? "text-yellow-500 hover:text-yellow-600"
-                                        : "text-muted-foreground hover:text-yellow-500"
-                                }
-                            >
-                                <Flag
-                                    className={`h-5 w-5 ${
-                                        isFlagged ? "fill-current" : ""
-                                    }`}
-                                />
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={
+                                            reported
+                                                ? "text-red-500"
+                                                : flagged
+                                                  ? "text-yellow-500"
+                                                  : "text-muted-foreground"
+                                        }
+                                    >
+                                        <Flag
+                                            className={`h-5 w-5 ${
+                                                reported || flagged
+                                                    ? "fill-current"
+                                                    : ""
+                                            }`}
+                                        />
+                                    </Button>
+                                </DropdownMenuTrigger>
+
+                                <DropdownMenuContent align="end">
+                                    {/* 🟡 FLAG */}
+                                    {!flagged && (
+                                        <DropdownMenuItem
+                                            onClick={() => {
+                                                setFlagged(true);
+                                                setReported(false);
+
+                                                router.post(
+                                                    route(
+                                                        "student.questions.flag",
+                                                        question.id,
+                                                    ),
+                                                    {},
+                                                    {
+                                                        preserveScroll: true,
+                                                        preserveState: true,
+                                                    },
+                                                );
+                                            }}
+                                        >
+                                            🟡 Flag for review
+                                        </DropdownMenuItem>
+                                    )}
+
+                                    {/* ❌ REMOVE FLAG */}
+                                    {flagged && (
+                                        <DropdownMenuItem
+                                            className="text-yellow-600"
+                                            onClick={() => {
+                                                setFlagged(false);
+
+                                                router.delete(
+                                                    route(
+                                                        "student.questions.unflag",
+                                                        question.id,
+                                                    ),
+                                                    {
+                                                        preserveScroll: true,
+                                                        preserveState: true,
+                                                    },
+                                                );
+                                            }}
+                                        >
+                                            ❌ Remove flag
+                                        </DropdownMenuItem>
+                                    )}
+
+                                    {/* 🔴 REPORT */}
+                                    {!reported && (
+                                        <DropdownMenuItem
+                                            className="text-red-600"
+                                            onClick={() =>
+                                                setShowReportInput(true)
+                                            }
+                                        >
+                                            🔴 Report problem
+                                        </DropdownMenuItem>
+                                    )}
+
+                                    {/* ❌ REMOVE REPORT */}
+                                    {reported && (
+                                        <DropdownMenuItem
+                                            className="text-red-700"
+                                            onClick={() => {
+                                                setReported(false);
+
+                                                router.delete(
+                                                    route(
+                                                        "student.questions.unreport",
+                                                        question.id,
+                                                    ),
+                                                    {
+                                                        preserveScroll: true,
+                                                        preserveState: true,
+                                                    },
+                                                );
+                                            }}
+                                        >
+                                            ❌ Remove report
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
+                        {/* 📝 Report input form */}
+                        {showReportInput && (
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (!reportReason) return;
+
+                                    router.post(
+                                        route(
+                                            "student.questions.report",
+                                            question.id,
+                                        ),
+                                        { reason: reportReason },
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () => {
+                                                setReported(true);
+                                                setFlagged(false);
+                                                setShowReportInput(false);
+                                                setReportReason("");
+                                            },
+                                        },
+                                    );
+                                }}
+                                className="mt-2 flex flex-col gap-2 px-2"
+                            >
+                                <input
+                                    type="text"
+                                    placeholder="Enter reason..."
+                                    value={reportReason}
+                                    onChange={(e) =>
+                                        setReportReason(e.target.value)
+                                    }
+                                    className="border px-2 py-1 rounded w-full text-sm text-black"
+                                    required
+                                />
+                                <button
+                                    type="submit"
+                                    className="bg-red-600 text-white px-2 py-1 rounded text-sm"
+                                >
+                                    Submit
+                                </button>
+                            </form>
+                        )}
                         <CardTitle className="sm:text-xl">
                             {question.question_text}
                         </CardTitle>
@@ -340,10 +470,12 @@ export default function QuizTake({
                                     const isSelected =
                                         form.data.answer === String(option.id);
                                     const showHighlight =
-                                        (showExplanation || showExplanationAll) &&
+                                        (showExplanation ||
+                                            showExplanationAll) &&
                                         (option.is_correct || isSelected);
-                                    const isCorrectOption =
-                                        Boolean(option.is_correct);
+                                    const isCorrectOption = Boolean(
+                                        option.is_correct,
+                                    );
                                     return (
                                         <Label
                                             key={option.id}

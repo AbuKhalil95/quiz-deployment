@@ -80,4 +80,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Question::class, 'question_flags')
             ->withTimestamps();
     }
+
+    public function reportedQuestions()
+    {
+        return $this->belongsToMany(Question::class, 'question_reports')
+            ->withPivot('status', 'reason')
+            ->withTimestamps();
+    }
 }

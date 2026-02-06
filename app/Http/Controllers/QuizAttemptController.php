@@ -26,12 +26,12 @@ class QuizAttemptController extends Controller
         // Apply search if provided
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
-            $query->whereHas('quiz', fn ($q) => $q->where('title', 'like', "%{$search}%"))
-                ->orWhereHas('student', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+            $query->whereHas('quiz', fn($q) => $q->where('title', 'like', "%{$search}%"))
+                ->orWhereHas('student', fn($q) => $q->where('name', 'like', "%{$search}%"));
         }
 
         // Paginate and map
-        $attempts = $query->paginate(10)->withQueryString()->through(fn ($attempt) => [
+        $attempts = $query->paginate(10)->withQueryString()->through(fn($attempt) => [
             'id' => $attempt->id,
             'quiz_id' => $attempt->quiz_id,
             'student_id' => $attempt->student_id,
@@ -41,6 +41,7 @@ class QuizAttemptController extends Controller
             'total_correct' => $attempt->total_correct,
             'total_incorrect' => $attempt->total_incorrect,
             'total_questions' => $attempt->quiz?->questions()->count() ?? 0,
+            'report_count' => $attempt->answers->sum(fn($a) => $a->question?->reports->count() ?? 0),
             'quiz' => $attempt->quiz ? [
                 'id' => $attempt->quiz->id,
                 'title' => $attempt->quiz->title,
@@ -50,6 +51,7 @@ class QuizAttemptController extends Controller
                 'name' => $attempt->student->name,
                 'email' => $attempt->student->email,
             ] : null,
+
         ]);
 
         return \Inertia\Inertia::render('admin/Attempts/Index', [
@@ -90,13 +92,14 @@ class QuizAttemptController extends Controller
         ) {
             abort(403);
         }
-        if (! $attempt) {
+        if (!$attempt) {
             abort(404, 'Quiz Attempt not found');
         }
 
         // For Inertia requests
         if (request()->inertia()) {
             $answers = $attempt->answers->map(function ($answer) {
+                $reports = $answer->question?->reports ?? collect();
                 return [
                     'id' => $answer->id,
                     'question_id' => $answer->question_id,
@@ -110,6 +113,11 @@ class QuizAttemptController extends Controller
                         'id' => $answer->selectedOption->id,
                         'option_text' => $answer->selectedOption->option_text,
                     ] : null,
+                    'reports' => $reports->map(fn($r) => [
+                        'id' => $r->id,
+                        'user_id' => $r->user_id,
+                        'reason' => $r->reason,
+                    ]),
                 ];
             });
 
@@ -179,7 +187,7 @@ class QuizAttemptController extends Controller
     {
         $attempt = QuizAttempt::find($id);
 
-        if (! $attempt) {
+        if (!$attempt) {
             abort(404, 'Quiz Attempt not found');
         }
 

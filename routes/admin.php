@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\TagSubjectController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\QuizAttemptController;
 use App\Http\Controllers\QuizController;
+use App\Http\Controllers\Student\QuestionReportController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UserController;
@@ -106,4 +107,14 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
 
     // Tag-Subject Pivot Relationships
     Route::get('/admin/tag-subjects', [TagSubjectController::class, 'index'])->name('admin.tagSubjects.index');
+
+
+    // reports
+    Route::get('/admin/question-reports', [QuestionReportController::class, 'index'])
+        ->name('admin.question-reports.index');
+
+    Route::patch('/admin/question-reports/{id}/update-status', [QuestionReportController::class, 'updateStatus'])
+        ->name('admin.question-reports.update-status');
+
+
 });

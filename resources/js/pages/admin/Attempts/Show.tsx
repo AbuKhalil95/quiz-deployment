@@ -33,6 +33,7 @@ interface Answer {
     is_correct: boolean;
     question: Question | null;
     selected_option: SelectedOption | null;
+    reports?: Report[];
 }
 
 interface Attempt {
@@ -60,16 +61,20 @@ export default function Show({ attempt }: Props) {
     };
 
     const totalQuestions = attempt.answers.length;
-    const percentage = totalQuestions > 0 
-        ? Math.round((attempt.total_correct / totalQuestions) * 100) 
-        : 0;
+    const percentage =
+        totalQuestions > 0
+            ? Math.round((attempt.total_correct / totalQuestions) * 100)
+            : 0;
 
     return (
         <AdminLayout
             breadcrumbs={[
                 { title: "Dashboard", href: "/admin" },
                 { title: "Attempts", href: "/admin/attempts" },
-                { title: `Attempt #${attempt.id}`, href: `/admin/attempts/${attempt.id}` },
+                {
+                    title: `Attempt #${attempt.id}`,
+                    href: `/admin/attempts/${attempt.id}`,
+                },
             ]}
         >
             <Head title={`Attempt #${attempt.id}`} />
@@ -131,7 +136,8 @@ export default function Show({ attempt }: Props) {
                                         Score
                                     </label>
                                     <p className="text-2xl font-bold">
-                                        {attempt.total_correct} / {totalQuestions}
+                                        {attempt.total_correct} /{" "}
+                                        {totalQuestions}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
                                         {percentage}% correct
@@ -142,7 +148,10 @@ export default function Show({ attempt }: Props) {
                                         Breakdown
                                     </label>
                                     <div className="flex gap-2 mt-1">
-                                        <Badge variant="default" className="bg-green-500">
+                                        <Badge
+                                            variant="default"
+                                            className="bg-green-500"
+                                        >
                                             {attempt.total_correct} Correct
                                         </Badge>
                                         <Badge variant="destructive">
@@ -190,6 +199,22 @@ export default function Show({ attempt }: Props) {
                                                             Incorrect
                                                         </Badge>
                                                     )}
+
+                                                    {/* 🚩 Report / Flag Badge */}
+                                                    {answer.reports?.length >
+                                                        0 && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="bg-yellow-100 text-yellow-800"
+                                                        >
+                                                            ⚠️ Reported (
+                                                            {
+                                                                answer.reports
+                                                                    .length
+                                                            }
+                                                            )
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
@@ -225,4 +250,3 @@ export default function Show({ attempt }: Props) {
         </AdminLayout>
     );
 }
-
