@@ -11,16 +11,35 @@ use Inertia\Inertia;
 class QuestionReportController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
         $reports = QuestionReport::with(['user', 'question'])
+            ->when($request->search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas(
+                        'user',
+                        fn($u) =>
+                        $u->where('name', 'like', "%{$search}%")
+                    )->orWhereHas(
+                            'question',
+                            fn($q2) =>
+                            $q2->where('question_text', 'like', "%{$search}%")
+                        );
+                });
+            })
+            ->when($request->status, function ($query, $status) {
+                $query->where('status', $status);
+            })
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
 
         return Inertia::render('admin/reports/Index', [
             'reports' => $reports,
+            'filters' => $request->only(['search', 'status']),
         ]);
     }
+
 
     public function updateStatus(Request $request, $id)
     {

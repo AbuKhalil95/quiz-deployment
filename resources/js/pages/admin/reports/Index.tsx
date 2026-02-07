@@ -1,5 +1,5 @@
 import { Head, router } from "@inertiajs/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "@/layouts/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Eye } from "lucide-react";
 import { Link } from "@inertiajs/react";
+import { SmartPagination } from "@/components/common/SmartPagination";
 
 interface Report {
     id: number;
@@ -23,32 +24,71 @@ interface Report {
 }
 
 interface Props {
-    reports: Report[];
+    reports: {
+        data: Report[];
+        current_page: number;
+        last_page: number;
+        prev_page_url: string | null;
+        next_page_url: string | null;
+    };
+    filters: {
+        search?: string;
+        status?: string;
+    };
 }
 
-export default function QuestionReports({ reports }: Props) {
-    const [localReports, setLocalReports] = useState(reports);
+export default function QuestionReports({ reports, filters }: Props) {
+    const [search, setSearch] = useState(filters.search || "");
+    const [status, setStatus] = useState(filters.status || "");
+    const [isMounted, setIsMounted] = useState(false);
 
-    const updateStatus = (reportId: number, status: "pending" | "approved") => {
+    /* 🔹 Debounced search + status (EXACTLY like Attempts) */
+    useEffect(() => {
+        if (!isMounted) {
+            setIsMounted(true);
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            router.get(
+                route("admin.question-reports.index"),
+                { search, status },
+                { preserveState: true, replace: true },
+            );
+        }, 500);
+
+        return () => clearTimeout(timeout);
+    }, [search, status]);
+
+    const togglePending = () => {
+        setStatus(status === "pending" ? "" : "pending");
+    };
+
+    const updateStatus = (id: number) => {
         router.patch(
-            route("admin.question-reports.update-status", reportId),
-            { status },
+            route("admin.question-reports.update-status", id),
+            { status: "approved" },
+            { preserveScroll: true },
+        );
+    };
+
+    const goToPage = (url: string | null) => {
+        if (!url) return;
+
+        router.get(
+            url,
             {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setLocalReports((prev) =>
-                        prev.map((r) =>
-                            r.id === reportId ? { ...r, status } : r,
-                        ),
-                    );
-                },
+                search,
+                status,
+            },
+            {
+                preserveState: true,
+                replace: true,
             },
         );
     };
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString();
-    };
+    const formatDate = (date: string) => new Date(date).toLocaleString();
 
     return (
         <AdminLayout
@@ -58,12 +98,38 @@ export default function QuestionReports({ reports }: Props) {
             ]}
         >
             <Head title="Question Reports" />
+
             <div className="p-6">
                 <Card>
                     <CardHeader>
                         <CardTitle>Question Reports</CardTitle>
                     </CardHeader>
+
                     <CardContent>
+                        {/* 🔍 Search + Status */}
+                        <div className="mb-4 flex gap-3 items-center">
+                            {/* Search */}
+                            <div className=" flex w-[220px] gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Search subjects..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="border px-2 py-1 rounded w-full "
+                                />
+                            </div>
+
+                            <Button
+                                variant={
+                                    status === "pending" ? "default" : "outline"
+                                }
+                                onClick={togglePending}
+                            >
+                                Pending Only
+                            </Button>
+                        </div>
+
+                        {/* 📋 Table */}
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -71,12 +137,15 @@ export default function QuestionReports({ reports }: Props) {
                                     <TableHead>Student</TableHead>
                                     <TableHead>Question</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Created At</TableHead>
-                                    <TableHead>Actions</TableHead>
+                                    <TableHead>Created</TableHead>
+                                    <TableHead className="text-right">
+                                        Actions
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
+
                             <TableBody>
-                                {localReports.length === 0 ? (
+                                {reports.data.length === 0 ? (
                                     <TableRow>
                                         <TableCell
                                             colSpan={6}
@@ -86,7 +155,7 @@ export default function QuestionReports({ reports }: Props) {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    localReports.map((report) => (
+                                    reports.data.map((report) => (
                                         <TableRow key={report.id}>
                                             <TableCell>{report.id}</TableCell>
                                             <TableCell>
@@ -103,7 +172,6 @@ export default function QuestionReports({ reports }: Props) {
                                                         onClick={() =>
                                                             updateStatus(
                                                                 report.id,
-                                                                "approved",
                                                             )
                                                         }
                                                     >
@@ -119,28 +187,38 @@ export default function QuestionReports({ reports }: Props) {
                                                 {formatDate(report.created_at)}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        asChild
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    asChild
+                                                >
+                                                    <Link
+                                                        href={route(
+                                                            "admin.reports.show",
+                                                            report.id,
+                                                        )}
                                                     >
-                                                        <Link
-                                                            href={route(
-                                                                "admin.reports.show",
-                                                                report.id,
-                                                            )}
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
-                                                </div>
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 )}
                             </TableBody>
                         </Table>
+
+                        {/* 🔢 Smart Pagination */}
+                        <SmartPagination
+                            currentPage={reports.current_page}
+                            totalPages={reports.last_page}
+                            prevPageUrl={reports.prev_page_url}
+                            nextPageUrl={reports.next_page_url}
+                            onUrlChange={goToPage}
+                            buildUrl={(page) =>
+                                `/admin/question-reports?page=${page}`
+                            }
+                        />
                     </CardContent>
                 </Card>
             </div>

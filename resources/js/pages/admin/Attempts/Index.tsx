@@ -111,7 +111,7 @@ export default function Index({ attempts, filters }: any) {
                                     <TableHead>Student</TableHead>
                                     <TableHead>Quiz</TableHead>
                                     <TableHead>Score</TableHead>
-                                    <TableHead>Reports</TableHead>
+                                    
                                     <TableHead>Started At</TableHead>
                                     <TableHead>Ended At</TableHead>
                                     <TableHead className="text-right">
@@ -147,16 +147,7 @@ export default function Index({ attempts, filters }: any) {
                                                 incorrect)
                                             </TableCell>
 
-                                            <TableCell>
-                                                {attempt.report_count > 0 ? (
-                                                    <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-800 font-semibold">
-                                                        ⚠️{" "}
-                                                        {attempt.report_count}
-                                                    </span>
-                                                ) : (
-                                                    "-"
-                                                )}
-                                            </TableCell>
+                                           
                                             <TableCell>
                                                 {formatDate(attempt.started_at)}
                                             </TableCell>
