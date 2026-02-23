@@ -73,6 +73,13 @@ export default function StudentLayout({
                                     <DropdownMenuItem onClick={handleLogout}>
                                         Logout
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link
+                                            href={route("student.charts.index")}
+                                        >
+                                            Charts
+                                        </Link>
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>

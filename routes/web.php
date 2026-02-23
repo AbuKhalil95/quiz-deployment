@@ -6,6 +6,8 @@ use App\Http\Controllers\Student\AttemptController;
 use App\Http\Controllers\Student\DashboardController;
 use App\Http\Controllers\Student\QuestionReportController;
 use App\Http\Controllers\Student\QuizController as StudentQuizController;
+use App\Http\Controllers\Student\ChartsController as StudentChartsController;
+
 use Illuminate\Support\Facades\Route;
 
 // -------------------- Guest (login / register) --------------------
@@ -104,7 +106,11 @@ Route::middleware(['auth'])->group(function () {
         '/student/questions/{question}/report',
         [QuestionReportController::class, 'destroy']
     )->name('student.questions.unreport');
-    
+
     Route::get('/admin/reports/{report}', [QuestionReportController::class, 'show'])->name('admin.reports.show');
 
+
+    // charts
+    Route::get('/student/charts', [\App\Http\Controllers\Student\ChartsController::class, 'index'])
+        ->name('student.charts.index');
 });
