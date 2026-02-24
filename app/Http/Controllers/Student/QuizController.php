@@ -22,7 +22,7 @@ class QuizController extends Controller
         $quiz = $attempt->quiz()->with('questions.options', 'questions.subject', 'questions.tags')->first();
         $questions = $quiz->questions;
 
-        if (! isset($questions[$questionIndex])) {
+        if (!isset($questions[$questionIndex])) {
             $attempt->update([
                 'ended_at' => now(),
                 'score' => $attempt->answers()->where('is_correct', true)->count(),
@@ -36,7 +36,11 @@ class QuizController extends Controller
         $existingAnswer = $attempt->answers()->where('question_id', $question->id)->first();
         $selectedAnswer = $existingAnswer ? (string) $existingAnswer->selected_option_id : '';
         $isFlagged = Auth::user()->flaggedQuestions()->where('question_id', $question->id)->exists();
-
+        $isReported = Auth::user()
+            ->reportedQuestions()
+            ->where('question_id', $question->id)
+            ->wherePivot('status', 'pending')
+            ->exists();
         // ⬅ التعامل مع المؤقت لجميع الحالات
         if ($attempt->ends_at) {
             $endsAtTimestamp = $attempt->ends_at->timestamp;
@@ -54,12 +58,13 @@ class QuizController extends Controller
             'attempt' => $attempt,
             'question' => $question,
             'questionIndex' => $questionIndex,
-            'questions' => $questions->map(fn ($q) => [
+            'questions' => $questions->map(fn($q) => [
                 'id' => $q->id,
                 'show_explanation' => $q->pivot->show_explanation ?? false,
             ]),
             'selectedAnswer' => $selectedAnswer,
             'isFlagged' => $isFlagged,
+            'isReported' => $isReported,
             'ends_at_timestamp' => $endsAtTimestamp,
             'explanations' => $question->explanations,
             'showExplanationAll' => $showExplanationAll,
@@ -132,7 +137,7 @@ class QuizController extends Controller
                 'mode' => $quiz->mode,
                 'time_limit_minutes' => $quiz->time_limit_minutes,
                 'subject' => $quiz->subject,
-                'questions' => $quiz->questions->map(fn ($q) => ['id' => $q->id]),
+                'questions' => $quiz->questions->map(fn($q) => ['id' => $q->id]),
                 'total_questions' => $quiz->total_questions,
                 'show_explanation' => (bool) $quiz->show_explanation,
             ],

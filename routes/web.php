@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Student\AdaptiveQuizController;
 use App\Http\Controllers\Student\AttemptController;
 use App\Http\Controllers\Student\DashboardController;
+use App\Http\Controllers\Student\QuestionReportController;
 use App\Http\Controllers\Student\QuizController as StudentQuizController;
 use Illuminate\Support\Facades\Route;
 
@@ -92,4 +93,18 @@ Route::middleware(['auth'])->group(function () {
         ->name('student.questions.flag');
     Route::delete('/student/questions/{question}/flag', [\App\Http\Controllers\Student\FlaggedQuestionsController::class, 'destroy'])
         ->name('student.questions.unflag');
+
+    // Question Reports
+    Route::post(
+        '/student/questions/{question}/report',
+        [QuestionReportController::class, 'store']
+    )->name('student.questions.report');
+
+    Route::delete(
+        '/student/questions/{question}/report',
+        [QuestionReportController::class, 'destroy']
+    )->name('student.questions.unreport');
+    
+    Route::get('/admin/reports/{report}', [QuestionReportController::class, 'show'])->name('admin.reports.show');
+
 });

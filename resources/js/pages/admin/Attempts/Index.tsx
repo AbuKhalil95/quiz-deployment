@@ -64,7 +64,7 @@ export default function Index({ attempts, filters }: any) {
             router.get(
                 "/admin/attempts",
                 { search },
-                { preserveState: true, replace: true }
+                { preserveState: true, replace: true },
             );
         }, 500);
 
@@ -111,6 +111,7 @@ export default function Index({ attempts, filters }: any) {
                                     <TableHead>Student</TableHead>
                                     <TableHead>Quiz</TableHead>
                                     <TableHead>Score</TableHead>
+                                    
                                     <TableHead>Started At</TableHead>
                                     <TableHead>Ended At</TableHead>
                                     <TableHead className="text-right">
@@ -145,6 +146,8 @@ export default function Index({ attempts, filters }: any) {
                                                 {attempt.total_incorrect}{" "}
                                                 incorrect)
                                             </TableCell>
+
+                                           
                                             <TableCell>
                                                 {formatDate(attempt.started_at)}
                                             </TableCell>
@@ -161,7 +164,7 @@ export default function Index({ attempts, filters }: any) {
                                                         <Link
                                                             href={route(
                                                                 "admin.attempts.show",
-                                                                attempt.id
+                                                                attempt.id,
                                                             )}
                                                         >
                                                             <Eye className="h-4 w-4" />

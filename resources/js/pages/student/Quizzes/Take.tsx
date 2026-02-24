@@ -13,11 +13,11 @@ import {
     ChevronRight,
     DoorOpen,
     Eye,
-    Flag,
     EyeOff,
 } from "lucide-react";
 import { SubjectBadge } from "@/components/common/SubjectBadge";
 import { TagBadge } from "@/components/common/TagBadge";
+import { QuestionFlagReport } from "@/components/common/QuestionFlagReport";
 
 interface Props {
     attempt: { id: number };
@@ -29,6 +29,7 @@ interface Props {
     ends_at_timestamp?: number | null;
     explanations?: Record<string, string> | null;
     showExplanationAll?: boolean; // ✅ من backend
+    isReported?: boolean;
 }
 
 export default function QuizTake({
@@ -41,6 +42,7 @@ export default function QuizTake({
     ends_at_timestamp,
     explanations = null,
     showExplanationAll = false,
+    isReported = false,
 }: Props) {
     const form = useForm({ answer: selectedAnswer });
     const qIndex = Number(questionIndex);
@@ -127,7 +129,7 @@ export default function QuizTake({
             {
                 onSuccess: () =>
                     router.visit(route("student.attempts.show", attempt.id)),
-            }
+            },
         );
     };
 
@@ -145,7 +147,7 @@ export default function QuizTake({
 
         if (!form.data.answer) {
             router.visit(
-                route("student.attempts.take.single", [attempt.id, qIndex + 1])
+                route("student.attempts.take.single", [attempt.id, qIndex + 1]),
             );
             return;
         }
@@ -158,10 +160,10 @@ export default function QuizTake({
                         route("student.attempts.take.single", [
                             attempt.id,
                             qIndex + 1,
-                        ])
+                        ]),
                     );
                 },
-            }
+            },
         );
     };
 
@@ -174,9 +176,9 @@ export default function QuizTake({
                 {
                     onSuccess: () =>
                         router.visit(
-                            route("student.attempts.show", attempt.id)
+                            route("student.attempts.show", attempt.id),
                         ),
-                }
+                },
             );
             return;
         }
@@ -191,7 +193,7 @@ export default function QuizTake({
     const handlePrevious = () => {
         if (qIndex > 0) {
             router.visit(
-                route("student.attempts.take.single", [attempt.id, qIndex - 1])
+                route("student.attempts.take.single", [attempt.id, qIndex - 1]),
             );
         }
     };
@@ -281,47 +283,18 @@ export default function QuizTake({
                                                     >
                                                         ···
                                                     </span>
-                                                )
+                                                ),
                                             )}
                                     </>
                                 )}
                             </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                    if (isFlagged) {
-                                        router.delete(
-                                            route(
-                                                "student.questions.unflag",
-                                                question.id
-                                            ),
-                                            { preserveScroll: true }
-                                        );
-                                    } else {
-                                        router.post(
-                                            route(
-                                                "student.questions.flag",
-                                                question.id
-                                            ),
-                                            {},
-                                            { preserveScroll: true }
-                                        );
-                                    }
-                                }}
-                                className={
-                                    isFlagged
-                                        ? "text-yellow-500 hover:text-yellow-600"
-                                        : "text-muted-foreground hover:text-yellow-500"
-                                }
-                            >
-                                <Flag
-                                    className={`h-5 w-5 ${
-                                        isFlagged ? "fill-current" : ""
-                                    }`}
-                                />
-                            </Button>
+                            <QuestionFlagReport
+                                questionId={question.id}
+                                isFlagged={isFlagged}
+                                isReported={isReported}
+                            />
                         </div>
+
                         <CardTitle className="sm:text-xl">
                             {question.question_text}
                         </CardTitle>
@@ -340,10 +313,12 @@ export default function QuizTake({
                                     const isSelected =
                                         form.data.answer === String(option.id);
                                     const showHighlight =
-                                        (showExplanation || showExplanationAll) &&
+                                        (showExplanation ||
+                                            showExplanationAll) &&
                                         (option.is_correct || isSelected);
-                                    const isCorrectOption =
-                                        Boolean(option.is_correct);
+                                    const isCorrectOption = Boolean(
+                                        option.is_correct,
+                                    );
                                     return (
                                         <Label
                                             key={option.id}
