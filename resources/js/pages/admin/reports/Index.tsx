@@ -11,7 +11,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Eye } from "lucide-react";
+import { Eye, Pencil } from "lucide-react";
 import { Link } from "@inertiajs/react";
 import { SmartPagination } from "@/components/common/SmartPagination";
 
@@ -19,6 +19,7 @@ interface Report {
     id: number;
     user: { id: number; name: string };
     question: { id: number; question_text: string };
+    reason: string | null;
     status: "pending" | "approved";
     created_at: string;
 }
@@ -136,6 +137,7 @@ export default function QuestionReports({ reports, filters }: Props) {
                                     <TableHead>ID</TableHead>
                                     <TableHead>Student</TableHead>
                                     <TableHead>Question</TableHead>
+                                    <TableHead>Note</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Created</TableHead>
                                     <TableHead className="text-right">
@@ -148,7 +150,7 @@ export default function QuestionReports({ reports, filters }: Props) {
                                 {reports.data.length === 0 ? (
                                     <TableRow>
                                         <TableCell
-                                            colSpan={6}
+                                            colSpan={7}
                                             className="text-center"
                                         >
                                             No reports found
@@ -163,6 +165,9 @@ export default function QuestionReports({ reports, filters }: Props) {
                                             </TableCell>
                                             <TableCell>
                                                 {report.question.question_text}
+                                            </TableCell>
+                                            <TableCell className="max-w-[200px] truncate" title={report.reason ?? undefined}>
+                                                {report.reason || "—"}
                                             </TableCell>
                                             <TableCell>
                                                 {report.status === "pending" ? (
@@ -187,20 +192,38 @@ export default function QuestionReports({ reports, filters }: Props) {
                                                 {formatDate(report.created_at)}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    asChild
-                                                >
-                                                    <Link
-                                                        href={route(
-                                                            "admin.reports.show",
-                                                            report.id,
-                                                        )}
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        asChild
                                                     >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Link>
-                                                </Button>
+                                                        <Link
+                                                            href={route(
+                                                                "admin.questions.edit",
+                                                                report.question.id,
+                                                            )}
+                                                            title="Edit question"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={route(
+                                                                "admin.reports.show",
+                                                                report.id,
+                                                            )}
+                                                            title="View report"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Link>
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
