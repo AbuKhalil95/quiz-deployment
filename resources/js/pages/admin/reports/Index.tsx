@@ -116,7 +116,7 @@ export default function QuestionReports({ reports, filters }: Props) {
                                     placeholder="Search subjects..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="border px-2 py-1 rounded w-full "
+                                    className="border px-2 py-1 rounded w-full"
                                 />
                             </div>
 
@@ -166,7 +166,12 @@ export default function QuestionReports({ reports, filters }: Props) {
                                             <TableCell>
                                                 {report.question.question_text}
                                             </TableCell>
-                                            <TableCell className="max-w-[200px] truncate" title={report.reason ?? undefined}>
+                                            <TableCell
+                                                className="max-w-[200px] truncate"
+                                                title={
+                                                    report.reason ?? undefined
+                                                }
+                                            >
                                                 {report.reason || "—"}
                                             </TableCell>
                                             <TableCell>
@@ -201,7 +206,8 @@ export default function QuestionReports({ reports, filters }: Props) {
                                                         <Link
                                                             href={route(
                                                                 "admin.questions.edit",
-                                                                report.question.id,
+                                                                report.question
+                                                                    .id,
                                                             )}
                                                             title="Edit question"
                                                         >

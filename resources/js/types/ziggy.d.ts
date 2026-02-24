@@ -733,6 +733,19 @@ declare module 'ziggy-js' {
             "required": true
         }
     ],
+    "admin.question-reports.index": [],
+    "admin.question-reports.update-status": [
+        {
+            "name": "id",
+            "required": true
+        }
+    ],
+    "admin.reports.show": [
+        {
+            "name": "id",
+            "required": true
+        }
+    ],
     "storage.local": [
         {
             "name": "path",
