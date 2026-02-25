@@ -1,8 +1,9 @@
 import { Head, Link } from "@inertiajs/react";
+import { route } from "ziggy-js";
 import AdminLayout from "@/layouts/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 
 interface Report {
     id: number;
@@ -41,8 +42,20 @@ export default function Show({ report }: Props) {
                 </div>
 
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
                         <CardTitle>Report Details</CardTitle>
+                        <Button variant="outline" size="sm" asChild>
+                            <Link
+                                href={route(
+                                    "admin.questions.edit",
+                                    report.question.id,
+                                )}
+                                title="Edit question"
+                            >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit question
+                            </Link>
+                        </Button>
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 md:grid-cols-2">

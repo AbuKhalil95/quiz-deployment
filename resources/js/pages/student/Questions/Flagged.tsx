@@ -18,6 +18,7 @@ import {
     Circle,
 } from "lucide-react";
 import { route } from "ziggy-js";
+import { QuestionFlagReport } from "@/components/common/QuestionFlagReport";
 
 interface Subject {
     id: number;
@@ -83,12 +84,6 @@ export default function FlaggedQuestions({
             if (newSet.has(questionId)) newSet.delete(questionId);
             else newSet.add(questionId);
             return newSet;
-        });
-    };
-
-    const handleUnflag = (questionId: number) => {
-        router.delete(route("student.questions.unflag", questionId), {
-            preserveScroll: true,
         });
     };
 
@@ -240,18 +235,14 @@ export default function FlaggedQuestions({
                                                         {question.question_text}
                                                     </CardTitle>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() =>
-                                                        handleUnflag(
-                                                            question.id,
-                                                        )
-                                                    }
-                                                    className="text-yellow-500"
-                                                >
-                                                    <Flag className="h-4 w-4 fill-current" />
-                                                </Button>
+                                                <QuestionFlagReport
+                                                    questionId={question.id}
+                                                    isFlagged={true}
+                                                    onFlaggedChange={(value) => {
+                                                        if (!value) router.reload();
+                                                    }}
+                                                    iconClassName="h-4 w-4"
+                                                />
                                             </div>
                                         </CardHeader>
                                         <CardContent className="space-y-4">

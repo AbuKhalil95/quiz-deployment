@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { route } from "ziggy-js";
-import { CheckCircle2, XCircle, Circle, Flag } from "lucide-react";
+import { CheckCircle2, XCircle, Circle } from "lucide-react";
 import { SmartPagination } from "@/components/common/SmartPagination";
 import { SubjectBadge } from "@/components/common/SubjectBadge";
 import { TagBadge } from "@/components/common/TagBadge";
 import { cn } from "@/lib/utils";
+import { QuestionFlagReport } from "@/components/common/QuestionFlagReport";
 
 interface Subject {
     id: number;
@@ -326,47 +327,10 @@ export default function AttemptsShow({
                                                         </div>
                                                     )}
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => {
-                                                    if (answer.is_flagged) {
-                                                        router.delete(
-                                                            route(
-                                                                "student.questions.unflag",
-                                                                question.id,
-                                                            ),
-                                                            {
-                                                                preserveScroll: true,
-                                                            },
-                                                        );
-                                                    } else {
-                                                        router.post(
-                                                            route(
-                                                                "student.questions.flag",
-                                                                question.id,
-                                                            ),
-                                                            {},
-                                                            {
-                                                                preserveScroll: true,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                                className={
-                                                    answer.is_flagged
-                                                        ? "text-yellow-500 hover:text-yellow-600"
-                                                        : "text-muted-foreground hover:text-yellow-500"
-                                                }
-                                            >
-                                                <Flag
-                                                    className={`h-5 w-5 ${
-                                                        answer.is_flagged
-                                                            ? "fill-current"
-                                                            : ""
-                                                    }`}
-                                                />
-                                            </Button>
+                                            <QuestionFlagReport
+                                                questionId={question.id}
+                                                isFlagged={answer.is_flagged}
+                                            />
                                         </div>
                                         <CardTitle>
                                             <span className="text-muted-foreground text-xl">

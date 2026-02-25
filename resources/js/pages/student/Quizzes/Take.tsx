@@ -13,17 +13,11 @@ import {
     ChevronRight,
     DoorOpen,
     Eye,
-    Flag,
     EyeOff,
 } from "lucide-react";
 import { SubjectBadge } from "@/components/common/SubjectBadge";
 import { TagBadge } from "@/components/common/TagBadge";
-import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
-    DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+import { QuestionFlagReport } from "@/components/common/QuestionFlagReport";
 
 interface Props {
     attempt: { id: number };
@@ -56,10 +50,6 @@ export default function QuizTake({
     const isLastQuestion = qIndex === questions.length - 1;
     const allowNavigation = useRef(false);
     const timerFinishedRef = useRef(false);
-    const [flagged, setFlagged] = useState(isFlagged);
-    const [reported, setReported] = useState(isReported);
-    const [showReportInput, setShowReportInput] = useState(false);
-    const [reportReason, setReportReason] = useState("");
 
     const TIMER_STORAGE_KEY = `quiz_attempt_time_${attempt.id}`;
 
@@ -150,8 +140,6 @@ export default function QuizTake({
         if (!showExplanationAll) setShowExplanation(false);
         setShowSubjectAndTags(false);
         allowNavigation.current = false;
-        setFlagged(isFlagged);
-        setReported(isReported);
     }, [question.id]);
 
     const handleNext = (e: React.FormEvent) => {
@@ -300,158 +288,13 @@ export default function QuizTake({
                                     </>
                                 )}
                             </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={
-                                            reported
-                                                ? "text-red-500"
-                                                : flagged
-                                                  ? "text-yellow-500"
-                                                  : "text-muted-foreground"
-                                        }
-                                    >
-                                        <Flag
-                                            className={`h-5 w-5 ${
-                                                reported || flagged
-                                                    ? "fill-current"
-                                                    : ""
-                                            }`}
-                                        />
-                                    </Button>
-                                </DropdownMenuTrigger>
-
-                                <DropdownMenuContent align="end">
-                                    {/* 🟡 FLAG */}
-                                    {!flagged && (
-                                        <DropdownMenuItem
-                                            onClick={() => {
-                                                setFlagged(true);
-                                                setReported(false);
-
-                                                router.post(
-                                                    route(
-                                                        "student.questions.flag",
-                                                        question.id,
-                                                    ),
-                                                    {},
-                                                    {
-                                                        preserveScroll: true,
-                                                        preserveState: true,
-                                                    },
-                                                );
-                                            }}
-                                        >
-                                            🟡 Flag for review
-                                        </DropdownMenuItem>
-                                    )}
-
-                                    {/* ❌ REMOVE FLAG */}
-                                    {flagged && (
-                                        <DropdownMenuItem
-                                            className="text-yellow-600"
-                                            onClick={() => {
-                                                setFlagged(false);
-
-                                                router.delete(
-                                                    route(
-                                                        "student.questions.unflag",
-                                                        question.id,
-                                                    ),
-                                                    {
-                                                        preserveScroll: true,
-                                                        preserveState: true,
-                                                    },
-                                                );
-                                            }}
-                                        >
-                                            ❌ Remove flag
-                                        </DropdownMenuItem>
-                                    )}
-
-                                    {/* 🔴 REPORT */}
-                                    {!reported && (
-                                        <DropdownMenuItem
-                                            className="text-red-600"
-                                            onClick={() =>
-                                                setShowReportInput(true)
-                                            }
-                                        >
-                                            🔴 Report problem
-                                        </DropdownMenuItem>
-                                    )}
-
-                                    {/* ❌ REMOVE REPORT */}
-                                    {reported && (
-                                        <DropdownMenuItem
-                                            className="text-red-700"
-                                            onClick={() => {
-                                                setReported(false);
-
-                                                router.delete(
-                                                    route(
-                                                        "student.questions.unreport",
-                                                        question.id,
-                                                    ),
-                                                    {
-                                                        preserveScroll: true,
-                                                        preserveState: true,
-                                                    },
-                                                );
-                                            }}
-                                        >
-                                            ❌ Remove report
-                                        </DropdownMenuItem>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <QuestionFlagReport
+                                questionId={question.id}
+                                isFlagged={isFlagged}
+                                isReported={isReported}
+                            />
                         </div>
-                        {/* 📝 Report input form */}
-                        {showReportInput && (
-                            <form
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    if (!reportReason) return;
 
-                                    router.post(
-                                        route(
-                                            "student.questions.report",
-                                            question.id,
-                                        ),
-                                        { reason: reportReason },
-                                        {
-                                            preserveScroll: true,
-                                            onSuccess: () => {
-                                                setReported(true);
-                                                setFlagged(false);
-                                                setShowReportInput(false);
-                                                setReportReason("");
-                                            },
-                                        },
-                                    );
-                                }}
-                                className="mt-2 flex flex-col gap-2 px-2"
-                            >
-                                <input
-                                    type="text"
-                                    placeholder="Enter reason..."
-                                    value={reportReason}
-                                    onChange={(e) =>
-                                        setReportReason(e.target.value)
-                                    }
-                                    className="border px-2 py-1 rounded w-full text-sm text-black"
-                                    required
-                                />
-                                <button
-                                    type="submit"
-                                    className="bg-red-600 text-white px-2 py-1 rounded text-sm"
-                                >
-                                    Submit
-                                </button>
-                            </form>
-                        )}
                         <CardTitle className="sm:text-xl">
                             {question.question_text}
                         </CardTitle>
