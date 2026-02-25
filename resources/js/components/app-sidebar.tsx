@@ -16,6 +16,7 @@ import {
     Book,
     Link2,
     AlertCircle,
+    ChartArea,
 } from "lucide-react";
 import AppLogo from "./app-logo";
 
@@ -69,6 +70,13 @@ const mainNavItems = [
                 title: "Question Reports",
                 href: "/admin/question-reports",
                 icon: AlertCircle,
+                role: ["admin", "teacher"],
+            },
+
+             {
+                title: "Charts",
+                href: "/admin/charts",
+                icon: ChartArea,
                 role: ["admin", "teacher"],
             },
         ],

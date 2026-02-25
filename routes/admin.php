@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\TagSubjectController;
+use App\Http\Controllers\ChartsController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\QuizAttemptController;
 use App\Http\Controllers\QuizController;
@@ -116,5 +117,7 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::patch('/admin/question-reports/{id}/update-status', [QuestionReportController::class, 'updateStatus'])
         ->name('admin.question-reports.update-status');
 
-
+    // charts
+    Route::get('/admin/charts', [ChartsController::class, 'index'])
+        ->name('admin.charts.index');
 });
