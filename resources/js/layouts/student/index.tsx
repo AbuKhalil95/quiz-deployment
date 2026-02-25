@@ -13,6 +13,7 @@ import { User } from "lucide-react";
 import { SharedData } from "@/types";
 import Messages from "@/components/messages";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TrendingUp } from "lucide-react";
 
 interface StudentLayoutProps extends PropsWithChildren {
     title?: string;
@@ -50,6 +51,20 @@ export default function StudentLayout({
 
                         <div className="flex items-center gap-2">
                             <ThemeToggle />
+                            {usePage().component === "student/Dashboard" && (
+                                <Button
+                                    variant="ghost"
+                                    className="flex items-center gap-2"
+                                    asChild
+                                >
+                                    <Link
+                                        href={route("student.charts.index")}
+                                    >
+                                        <TrendingUp className="h-4 w-4" />
+                                        Trends
+                                    </Link>
+                                </Button>
+                            )}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button
@@ -72,13 +87,6 @@ export default function StudentLayout({
                                     )}
                                     <DropdownMenuItem onClick={handleLogout}>
                                         Logout
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                        <Link
-                                            href={route("student.charts.index")}
-                                        >
-                                            Charts
-                                        </Link>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>

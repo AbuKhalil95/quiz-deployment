@@ -67,7 +67,7 @@ export default function Create({ subjects, questions }: Props) {
     const [filteredQuestions, setFilteredQuestions] =
         React.useState<Question[]>(questions);
     const [selectedSubjects, setSelectedSubjects] = React.useState<number[]>(
-        []
+        [],
     );
     const [selectedTagIds, setSelectedTagIds] = React.useState<number[]>([]);
     const [availableTags, setAvailableTags] = React.useState<Tag[]>([]);
@@ -84,7 +84,7 @@ export default function Create({ subjects, questions }: Props) {
                     // Clear tag selections that are not available for new subject
                     const validTagIds = data.map((t) => t.id);
                     setSelectedTagIds((prev) =>
-                        prev.filter((id) => validTagIds.includes(id))
+                        prev.filter((id) => validTagIds.includes(id)),
                     );
                 })
                 .catch(() => {
@@ -102,7 +102,7 @@ export default function Create({ subjects, questions }: Props) {
                 setIsLoadingQuestions(true);
                 const url = new URL(
                     `/admin/questions/by-subject/${form.data.subject_id}`,
-                    window.location.origin
+                    window.location.origin,
                 );
                 if (selectedTagIds.length > 0) {
                     selectedTagIds.forEach((tagId) => {
@@ -117,7 +117,7 @@ export default function Create({ subjects, questions }: Props) {
                     .then((data: Question[]) => {
                         if (!data.length) {
                             toast.error(
-                                "This subject has no questions. Please go to the Questions section and assign questions first."
+                                "This subject has no questions. Please go to the Questions section and assign questions first.",
                             );
                             setFilteredQuestions([]);
                             form.setData("questions", []);
@@ -136,7 +136,7 @@ export default function Create({ subjects, questions }: Props) {
                     })
                     .catch(() => {
                         toast.error(
-                            "Failed to fetch questions for this subject."
+                            "Failed to fetch questions for this subject.",
                         );
                         setIsLoadingQuestions(false);
                     });
@@ -166,7 +166,7 @@ export default function Create({ subjects, questions }: Props) {
         const total = parseInt(form.data.total_questions, 10);
         if (!total || total <= 0) {
             toast.error(
-                "Please enter a valid number of questions to randomly select"
+                "Please enter a valid number of questions to randomly select",
             );
             return;
         }
@@ -182,7 +182,7 @@ export default function Create({ subjects, questions }: Props) {
         params.append("total_questions", String(total));
 
         const url = `${route(
-            "admin.questions.bySubjects"
+            "admin.questions.bySubjects",
         )}?${params.toString()}`;
 
         fetch(url)
@@ -216,7 +216,7 @@ export default function Create({ subjects, questions }: Props) {
                         ? `from ${selectedSubjects.length} subject(s)`
                         : "from all subjects";
                 toast.success(
-                    `Randomly selected ${rows.length} questions ${subjectMsg} (balanced distribution)`
+                    `Randomly selected ${rows.length} questions ${subjectMsg} (balanced distribution)`,
                 );
                 setIsLoadingQuestions(false);
             })
@@ -256,7 +256,7 @@ export default function Create({ subjects, questions }: Props) {
     const updateRow = (
         index: number,
         field: string,
-        value: string | number
+        value: string | number,
     ) => {
         const updated = [...form.data.questions];
         updated[index] = { ...updated[index], [field]: value };
@@ -277,13 +277,13 @@ export default function Create({ subjects, questions }: Props) {
             const total = parseInt(form.data.total_questions, 10);
             if (!total) {
                 toast.error(
-                    "Please enter the number of questions to randomly select"
+                    "Please enter the number of questions to randomly select",
                 );
                 return;
             }
             if (form.data.questions.length !== total) {
                 toast.error(
-                    `Total questions do not match. Expected: ${total}, Got: ${form.data.questions.length}`
+                    `Total questions do not match. Expected: ${total}, Got: ${form.data.questions.length}`,
                 );
                 return;
             }
@@ -338,133 +338,6 @@ export default function Create({ subjects, questions }: Props) {
                     <CardContent>
                         <form onSubmit={handleSubmit}>
                             <div className="space-y-6">
-                                {/* Title */}
-                                <div className="grid gap-2">
-                                    <Label>Title</Label>
-                                    <Input
-                                        value={form.data.title}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                "title",
-                                                e.target.value
-                                            )
-                                        }
-                                    />
-                                    <InputError message={form.errors.title} />
-                                </div>
-
-                                {/* Mode - Radio buttons */}
-                                <div className="grid gap-2">
-                                    <Label>Mode</Label>
-                                    <div className="flex gap-6">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="mode"
-                                                value="by_subject"
-                                                checked={
-                                                    form.data.mode ===
-                                                    "by_subject"
-                                                }
-                                                onChange={(e) => {
-                                                    form.setData(
-                                                        "mode",
-                                                        e.target.value
-                                                    );
-                                                    form.setData(
-                                                        "total_questions",
-                                                        ""
-                                                    );
-                                                    form.setData(
-                                                        "questions",
-                                                        []
-                                                    );
-                                                }}
-                                                className="w-4 h-4"
-                                            />
-                                            <span>By Subject</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="mode"
-                                                value="mixed_bag"
-                                                checked={
-                                                    form.data.mode ===
-                                                    "mixed_bag"
-                                                }
-                                                onChange={(e) => {
-                                                    form.setData(
-                                                        "mode",
-                                                        e.target.value
-                                                    );
-                                                    form.setData(
-                                                        "questions",
-                                                        []
-                                                    );
-                                                    form.setData(
-                                                        "total_questions",
-                                                        ""
-                                                    );
-                                                    if (
-                                                        e.target.value ===
-                                                        "mixed_bag"
-                                                    ) {
-                                                        setSelectedSubjects([]);
-                                                    }
-                                                }}
-                                                className="w-4 h-4"
-                                            />
-                                            <span>Randomize</span>
-                                        </label>
-                                    </div>
-                                    <InputError message={form.errors.mode} />
-                                </div>
-
-                                {/* Time Limit - Optional for all modes */}
-                                <div className="grid gap-2">
-                                    <Label>
-                                        Time Limit (Minutes)
-                                        <span className="text-muted-foreground text-sm ml-1">
-                                            (Optional)
-                                        </span>
-                                    </Label>
-
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        placeholder="Enter exam duration in minutes (leave empty for no timer)"
-                                        value={form.data.time_limit_minutes}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                "time_limit_minutes",
-                                                e.target.value
-                                            )
-                                        }
-                                    />
-
-                                    <InputError
-                                        message={form.errors.time_limit_minutes}
-                                    />
-
-                                    <p className="text-xs text-muted-foreground">
-                                        Leave empty if you do not want a timer
-                                        for this quiz.
-                                    </p>
-                                </div>
-
-                                <Checkbox
-                                    label="Show explanations (will be visible for
-                                        all questions)"
-                                    checked={form.data.show_explanation}
-                                    onCheckedChange={(checked) =>
-                                        form.setData(
-                                            "show_explanation",
-                                            !!checked
-                                        )
-                                    }
-                                />
-
                                 {/* Subject - Show dropdown for by_subject mode, checkboxes for mixed_bag mode */}
                                 {form.data.mode === "by_subject" ? (
                                     <div className="grid gap-2">
@@ -480,9 +353,9 @@ export default function Create({ subjects, questions }: Props) {
                                                             subjects.find(
                                                                 (s) =>
                                                                     s.id ===
-                                                                    Number(v)
+                                                                    Number(v),
                                                             )?.name
-                                                        } Quiz`
+                                                        } Quiz`,
                                                     );
                                             }}
                                         >
@@ -520,10 +393,10 @@ export default function Create({ subjects, questions }: Props) {
                                                         0
                                                     }
                                                     onSelectionChange={(
-                                                        tagIds
+                                                        tagIds,
                                                     ) => {
                                                         setSelectedTagIds(
-                                                            tagIds
+                                                            tagIds,
                                                         );
                                                     }}
                                                     placeholder="Search tags to filter..."
@@ -544,31 +417,31 @@ export default function Create({ subjects, questions }: Props) {
                                                 >
                                                     <Checkbox
                                                         checked={selectedSubjects.includes(
-                                                            subject.id
+                                                            subject.id,
                                                         )}
                                                         onCheckedChange={(
-                                                            checked
+                                                            checked,
                                                         ) => {
                                                             if (checked) {
                                                                 setSelectedSubjects(
                                                                     [
                                                                         ...selectedSubjects,
                                                                         subject.id,
-                                                                    ]
+                                                                    ],
                                                                 );
                                                             } else {
                                                                 setSelectedSubjects(
                                                                     selectedSubjects.filter(
                                                                         (id) =>
                                                                             id !==
-                                                                            subject.id
-                                                                    )
+                                                                            subject.id,
+                                                                    ),
                                                                 );
                                                             }
                                                             // Clear questions when subjects change
                                                             form.setData(
                                                                 "questions",
-                                                                []
+                                                                [],
                                                             );
                                                         }}
                                                     />
@@ -590,6 +463,132 @@ export default function Create({ subjects, questions }: Props) {
                                         )}
                                     </div>
                                 )}
+                                {/* Title */}
+                                <div className="grid gap-2">
+                                    <Label>Title</Label>
+                                    <Input
+                                        value={form.data.title}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                "title",
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError message={form.errors.title} />
+                                </div>
+
+                                {/* Mode - Radio buttons */}
+                                <div className="grid gap-2">
+                                    <Label>Mode</Label>
+                                    <div className="flex gap-6">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="mode"
+                                                value="by_subject"
+                                                checked={
+                                                    form.data.mode ===
+                                                    "by_subject"
+                                                }
+                                                onChange={(e) => {
+                                                    form.setData(
+                                                        "mode",
+                                                        e.target.value,
+                                                    );
+                                                    form.setData(
+                                                        "total_questions",
+                                                        "",
+                                                    );
+                                                    form.setData(
+                                                        "questions",
+                                                        [],
+                                                    );
+                                                }}
+                                                className="w-4 h-4"
+                                            />
+                                            <span>By Subject</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="mode"
+                                                value="mixed_bag"
+                                                checked={
+                                                    form.data.mode ===
+                                                    "mixed_bag"
+                                                }
+                                                onChange={(e) => {
+                                                    form.setData(
+                                                        "mode",
+                                                        e.target.value,
+                                                    );
+                                                    form.setData(
+                                                        "questions",
+                                                        [],
+                                                    );
+                                                    form.setData(
+                                                        "total_questions",
+                                                        "",
+                                                    );
+                                                    if (
+                                                        e.target.value ===
+                                                        "mixed_bag"
+                                                    ) {
+                                                        setSelectedSubjects([]);
+                                                    }
+                                                }}
+                                                className="w-4 h-4"
+                                            />
+                                            <span>Randomize</span>
+                                        </label>
+                                    </div>
+                                    <InputError message={form.errors.mode} />
+                                </div>
+
+                                {/* Time Limit - Optional for all modes */}
+                                <div className="grid gap-2">
+                                    <Label>
+                                        Time Limit (Minutes)
+                                        <span className="text-muted-foreground text-sm ml-1">
+                                            (Optional)
+                                        </span>
+                                    </Label>
+
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        placeholder="Enter exam duration in minutes (leave empty for no timer)"
+                                        value={form.data.time_limit_minutes}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                "time_limit_minutes",
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+
+                                    <InputError
+                                        message={form.errors.time_limit_minutes}
+                                    />
+
+                                    <p className="text-xs text-muted-foreground">
+                                        Leave empty if you do not want a timer
+                                        for this quiz.
+                                    </p>
+                                </div>
+
+                                <Checkbox
+                                    label="Show explanations (will be visible for
+                                        all questions)"
+                                    checked={form.data.show_explanation}
+                                    onCheckedChange={(checked) =>
+                                        form.setData(
+                                            "show_explanation",
+                                            !!checked,
+                                        )
+                                    }
+                                />
 
                                 {/* Total questions - Only show for randomize mode */}
                                 {form.data.mode === "mixed_bag" && (
@@ -606,7 +605,7 @@ export default function Create({ subjects, questions }: Props) {
                                                 onChange={(e) =>
                                                     form.setData(
                                                         "total_questions",
-                                                        e.target.value
+                                                        e.target.value,
                                                     )
                                                 }
                                                 placeholder="Enter number of questions to randomly select"
@@ -621,7 +620,7 @@ export default function Create({ subjects, questions }: Props) {
                                                     parseInt(
                                                         form.data
                                                             .total_questions,
-                                                        10
+                                                        10,
                                                     ) <= 0 ||
                                                     isLoadingQuestions
                                                 }
@@ -731,7 +730,7 @@ export default function Create({ subjects, questions }: Props) {
                                                     value={questionSearch}
                                                     onChange={(e) =>
                                                         setQuestionSearch(
-                                                            e.target.value
+                                                            e.target.value,
                                                         )
                                                     }
                                                     className="pl-8"
@@ -764,15 +763,15 @@ export default function Create({ subjects, questions }: Props) {
                                                         filteredQuestions.find(
                                                             (ques) =>
                                                                 String(
-                                                                    ques.id
+                                                                    ques.id,
                                                                 ) ===
-                                                                question.question_id
+                                                                question.question_id,
                                                         );
                                                     return questionData
                                                         ? questionData.question_text
                                                               .toLowerCase()
                                                               .includes(
-                                                                  questionSearch.toLowerCase()
+                                                                  questionSearch.toLowerCase(),
                                                               )
                                                         : false;
                                                 })
@@ -794,12 +793,12 @@ export default function Create({ subjects, questions }: Props) {
                                                                         q.question_id
                                                                     }
                                                                     onValueChange={(
-                                                                        v
+                                                                        v,
                                                                     ) =>
                                                                         updateRow(
                                                                             originalIndex,
                                                                             "question_id",
-                                                                            v
+                                                                            v,
                                                                         )
                                                                     }
                                                                 >
@@ -810,38 +809,38 @@ export default function Create({ subjects, questions }: Props) {
                                                                         {filteredQuestions
                                                                             .filter(
                                                                                 (
-                                                                                    ques
+                                                                                    ques,
                                                                                 ) =>
                                                                                     !form.data.questions.some(
                                                                                         (
                                                                                             q2,
-                                                                                            idx
+                                                                                            idx,
                                                                                         ) =>
                                                                                             q2.question_id ===
                                                                                                 String(
-                                                                                                    ques.id
+                                                                                                    ques.id,
                                                                                                 ) &&
                                                                                             idx !==
-                                                                                                originalIndex
-                                                                                    )
+                                                                                                originalIndex,
+                                                                                    ),
                                                                             )
                                                                             .map(
                                                                                 (
-                                                                                    ques
+                                                                                    ques,
                                                                                 ) => (
                                                                                     <SelectItem
                                                                                         key={
                                                                                             ques.id
                                                                                         }
                                                                                         value={String(
-                                                                                            ques.id
+                                                                                            ques.id,
                                                                                         )}
                                                                                     >
                                                                                         {
                                                                                             ques.question_text
                                                                                         }
                                                                                     </SelectItem>
-                                                                                )
+                                                                                ),
                                                                             )}
                                                                     </SelectContent>
                                                                 </Select>
@@ -853,12 +852,12 @@ export default function Create({ subjects, questions }: Props) {
                                                                         const questionData =
                                                                             filteredQuestions.find(
                                                                                 (
-                                                                                    ques
+                                                                                    ques,
                                                                                 ) =>
                                                                                     String(
-                                                                                        ques.id
+                                                                                        ques.id,
                                                                                     ) ===
-                                                                                    q.question_id
+                                                                                    q.question_id,
                                                                             );
                                                                         return questionData?.subject ? (
                                                                             <div className="mt-1">
@@ -895,7 +894,7 @@ export default function Create({ subjects, questions }: Props) {
                                                                         q.order
                                                                     }
                                                                     onChange={(
-                                                                        e
+                                                                        e,
                                                                     ) =>
                                                                         updateRow(
                                                                             originalIndex,
@@ -903,9 +902,9 @@ export default function Create({ subjects, questions }: Props) {
                                                                             parseInt(
                                                                                 e
                                                                                     .target
-                                                                                    .value
+                                                                                    .value,
                                                                             ) ||
-                                                                                1
+                                                                                1,
                                                                         )
                                                                     }
                                                                 />
@@ -926,7 +925,7 @@ export default function Create({ subjects, questions }: Props) {
                                                                     type="button"
                                                                     onClick={() =>
                                                                         removeRow(
-                                                                            originalIndex
+                                                                            originalIndex,
                                                                         )
                                                                     }
                                                                 >
@@ -934,7 +933,7 @@ export default function Create({ subjects, questions }: Props) {
                                                                 </Button>
                                                             </div>
                                                         </div>
-                                                    )
+                                                    ),
                                                 )}
                                         </div>
                                     )}
@@ -946,7 +945,7 @@ export default function Create({ subjects, questions }: Props) {
                                         variant="outline"
                                         onClick={() =>
                                             router.visit(
-                                                route("admin.quizzes.index")
+                                                route("admin.quizzes.index"),
                                             )
                                         }
                                         disabled={form.processing}

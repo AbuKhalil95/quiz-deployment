@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 interface SmartPaginationProps {
     currentPage: number;
     totalPages: number;
-    onPageChange: (page: number) => void;
+    onPageChange?: (page: number) => void;
     showPrevNext?: boolean;
     prevLabel?: string;
     nextLabel?: string;
@@ -77,7 +77,7 @@ export function SmartPagination({
             const url = buildUrl(page);
             onUrlChange(url);
         } else {
-            onPageChange(page);
+            onPageChange?.(page);
         }
     };
 
@@ -85,7 +85,7 @@ export function SmartPagination({
         if (prevPageUrl && onUrlChange) {
             onUrlChange(prevPageUrl);
         } else {
-            onPageChange(currentPage - 1);
+            onPageChange?.(currentPage - 1);
         }
     };
 
@@ -93,7 +93,7 @@ export function SmartPagination({
         if (nextPageUrl && onUrlChange) {
             onUrlChange(nextPageUrl);
         } else {
-            onPageChange(currentPage + 1);
+            onPageChange?.(currentPage + 1);
         }
     };
 
@@ -132,10 +132,11 @@ export function SmartPagination({
                         <button
                             key={pageNum}
                             onClick={() => handlePageClick(pageNum)}
-                            className={`px-3 py-1 rounded border text-sm ${currentPage === pageNum
+                            className={`px-3 py-1 rounded border text-sm ${
+                                currentPage === pageNum
                                     ? "bg-blue-600 text-white"
                                     : "hover:bg-gray-100 hover:text-black"
-                                }`}
+                            }`}
                         >
                             {pageNum}
                         </button>
