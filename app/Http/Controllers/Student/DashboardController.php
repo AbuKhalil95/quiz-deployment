@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\Subject;
+use App\Models\SubjectNote;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -13,7 +14,9 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $subjects = Subject::whereHas('quizzes.questions')->paginate(6);
+        $subjects = Subject::whereHas('quizzes.questions')
+            ->withCount('notes')
+            ->paginate(6);
         $mixedBagQuizzes = Quiz::where('mode', 'mixed_bag')
             ->whereHas('questions')
             ->with('subject')
@@ -46,14 +49,32 @@ class DashboardController extends Controller
 
     public function quizzesBySubject($subjectId)
     {
-        $subject = Subject::findOrFail($subjectId);
+        $subject = Subject::query()
+            ->whereKey($subjectId)
+            ->whereHas('quizzes.questions')
+            ->with([
+                'notes' => fn ($q) => $q->orderByDesc('created_at'),
+            ])
+            ->firstOrFail();
+
         $quizzes = Quiz::where('subject_id', $subjectId)
             ->whereHas('questions')
             ->with('questions:id')
             ->paginate(6);
 
         return Inertia::render('student/QuizzesBySubject', [
-            'subject' => $subject,
+            'subject' => [
+                'id' => $subject->id,
+                'name' => $subject->name,
+            ],
+            'notes' => $subject->notes->map(fn (SubjectNote $n) => [
+                'id' => $n->id,
+                'original_name' => $n->original_name,
+                'mime_type' => $n->mime_type,
+                'size_bytes' => $n->size_bytes,
+                'preview_kind' => $n->previewKind(),
+                'created_at' => $n->created_at?->toIso8601String(),
+            ]),
             'quizzes' => $quizzes,
         ]);
     }

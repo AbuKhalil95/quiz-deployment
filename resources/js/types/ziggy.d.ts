@@ -7,10 +7,58 @@ declare module 'ziggy-js' {
     "register.post": [],
     "logout": [],
     "student.dashboard": [],
+    "student.subjects.notes.embed": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "student.subject.quizzes": [
         {
             "name": "id",
             "required": true
+        }
+    ],
+    "student.subjects.notes.download": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "student.subjects.notes.preview": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "student.subjects.notes.officeFrame": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
         }
     ],
     "student.adaptive.create": [],
@@ -151,6 +199,18 @@ declare module 'ziggy-js' {
         }
     ],
     "student.charts.index": [],
+    "admin.subjects.notes.embed": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.dashboard": [],
     "admin.users.role": [
         {
@@ -198,6 +258,61 @@ declare module 'ziggy-js' {
         {
             "name": "id",
             "required": true
+        }
+    ],
+    "admin.subjects.notes.store": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.subjects.notes.destroy": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.subjects.notes.download": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.subjects.notes.preview": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.subjects.notes.officeFrame": [
+        {
+            "name": "subject",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "note",
+            "required": true,
+            "binding": "id"
         }
     ],
     "admin.questions.import": [],
@@ -366,7 +481,6 @@ declare module 'ziggy-js' {
             "required": true
         }
     ],
-    "admin.charts.index": [],
     "storage.local": [
         {
             "name": "path",

@@ -3,7 +3,10 @@ import AdminLayout from "@/layouts/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import {
+    SubjectNotesSection,
+    type SubjectNoteRow,
+} from "./_components/SubjectNotesSection";
 
 
 
@@ -15,9 +18,10 @@ interface Subject {
 
 interface Props {
     subject: Subject;
+    notes: SubjectNoteRow[];
 }
 
-export default function Show({ subject }: Props) {
+export default function Show({ subject, notes }: Props) {
     return (
         <AdminLayout
             breadcrumbs={[
@@ -65,7 +69,7 @@ export default function Show({ subject }: Props) {
                     </CardContent>
                 </Card>
 
-              
+                <SubjectNotesSection subjectId={subject.id} notes={notes} />
             </div>
         </AdminLayout>
     );

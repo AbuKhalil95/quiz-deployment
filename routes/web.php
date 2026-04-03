@@ -6,8 +6,7 @@ use App\Http\Controllers\Student\AttemptController;
 use App\Http\Controllers\Student\DashboardController;
 use App\Http\Controllers\Student\QuestionReportController;
 use App\Http\Controllers\Student\QuizController as StudentQuizController;
-use App\Http\Controllers\Student\ChartsController as StudentChartsController;
-
+use App\Http\Controllers\Student\SubjectNoteController as StudentSubjectNoteController;
 use Illuminate\Support\Facades\Route;
 
 // -------------------- Guest (login / register) --------------------
@@ -21,11 +20,23 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Office Online fetches this URL (signed; student notes only)
+Route::get('/student/subjects/{subject}/notes/{note}/embed', [StudentSubjectNoteController::class, 'embed'])
+    ->middleware(['signed'])
+    ->name('student.subjects.notes.embed');
+
 // -------------------- Student Area --------------------
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('student.dashboard');
     Route::get('dashboard/subjects/{id}/quizzes', [DashboardController::class, 'quizzesBySubject'])->name('student.subject.quizzes');
+
+    Route::get('/student/subjects/{subject}/notes/{note}/download', [StudentSubjectNoteController::class, 'download'])
+        ->name('student.subjects.notes.download');
+    Route::get('/student/subjects/{subject}/notes/{note}/preview', [StudentSubjectNoteController::class, 'preview'])
+        ->name('student.subjects.notes.preview');
+    Route::get('/student/subjects/{subject}/notes/{note}/office', [StudentSubjectNoteController::class, 'officeFrame'])
+        ->name('student.subjects.notes.officeFrame');
 
     Route::prefix('student/quizzes/adaptive')->name('student.adaptive.')->group(function () {
         Route::get('/create', [AdaptiveQuizController::class, 'create'])
@@ -108,7 +119,6 @@ Route::middleware(['auth'])->group(function () {
     )->name('student.questions.unreport');
 
     Route::get('/admin/reports/{report}', [QuestionReportController::class, 'show'])->name('admin.reports.show');
-
 
     // charts
     Route::get('/student/charts', [\App\Http\Controllers\Student\ChartsController::class, 'index'])

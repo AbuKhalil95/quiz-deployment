@@ -173,7 +173,7 @@ class ChartsController extends Controller
             'fail' => $fail,
         ];
 
-        return Inertia::render('admin/Charts/Index', [
+        return Inertia::render('admin/Dashboard', [
             'quizAverages' => $quizAverages,
             'attemptsOverTime' => $attemptsOverTime,
             'attemptsPerQuiz' => $attemptsPerQuiz,

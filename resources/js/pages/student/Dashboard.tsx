@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { route } from "ziggy-js";
-import { Clock, BookOpen, Trophy, Eye, Lightbulb, Play, Flag, Check, Archive } from "lucide-react";
+import { Clock, BookOpen, Trophy, Eye, Lightbulb, Play, Flag, Check, Archive, FileText } from "lucide-react";
 import { SmartPagination } from "@/components/common/SmartPagination";
 import { RelativeDate } from "@/components/common/RelativeDate";
 
 interface Subject {
     id: number;
     name: string;
+    notes_count?: number;
 }
 
 interface Quiz {
@@ -213,8 +214,20 @@ export default function Dashboard({
                                         className="flex flex-col"
                                     >
                                         <CardHeader>
-                                            <CardTitle>
-                                                {subject.name}
+                                            <CardTitle className="flex items-center justify-between gap-2">
+                                                <span>{subject.name}</span>
+                                                {(subject.notes_count ?? 0) >
+                                                    0 && (
+                                                    <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground shrink-0">
+                                                        <FileText className="h-3.5 w-3.5" />
+                                                        {subject.notes_count}{" "}
+                                                        file
+                                                        {subject.notes_count ===
+                                                        1
+                                                            ? ""
+                                                            : "s"}
+                                                    </span>
+                                                )}
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="mt-auto">
@@ -225,7 +238,7 @@ export default function Dashboard({
                                                         subject.id
                                                     )}
                                                 >
-                                                    View Quizzes
+                                                    View quizzes & materials
                                                 </Link>
                                             </Button>
                                         </CardContent>

@@ -12,6 +12,13 @@ class Subject extends Model
 
     protected $fillable = ['name'];
 
+    protected static function booted(): void
+    {
+        static::deleting(function (Subject $subject) {
+            $subject->notes->each->delete();
+        });
+    }
+
     public function questions()
     {
         return $this->hasMany(Question::class);
@@ -26,5 +33,10 @@ class Subject extends Model
     {
         return $this->belongsToMany(Tag::class, 'subject_tag')
             ->withTimestamps();
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(SubjectNote::class);
     }
 }

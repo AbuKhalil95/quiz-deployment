@@ -7,14 +7,15 @@ use App\Http\Controllers\QuizAttemptController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\Student\QuestionReportController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\SubjectNoteController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Admin Dashboard (Inertia React)
-Route::get('/admin', function () {
-    return \Inertia\Inertia::render('admin/Dashboard');
-})->name('admin.dashboard');
+// Signed URL for Office Online viewer (no session; Microsoft fetches the file)
+Route::get('/admin/subjects/{subject}/notes/{note}/embed', [SubjectNoteController::class, 'embed'])
+    ->middleware(['signed'])
+    ->name('admin.subjects.notes.embed');
 
 // Admin-only routes - Users management
 Route::middleware(['auth', 'can.access'])->group(function () {
@@ -29,6 +30,12 @@ Route::middleware(['auth', 'can.access'])->group(function () {
 // Admin/Teacher routes - These will use Inertia React
 Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
 
+    Route::get('/admin', [ChartsController::class, 'index'])->name('admin.dashboard');
+
+    Route::get('/admin/charts', function () {
+        return redirect()->route('admin.dashboard', request()->query());
+    });
+
     // Subject
     Route::get('/admin/subjects', [SubjectController::class, 'index'])->name('admin.subjects.index');
     Route::post('/admin/subjects', [SubjectController::class, 'create'])->name('admin.subjects.create');
@@ -37,6 +44,12 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::get('/admin/subjects/{id}/edit', [SubjectController::class, 'edit'])->name('admin.subjects.edit');
     Route::post('/admin/subjects/{id}', [SubjectController::class, 'update'])->name('admin.subjects.update');
     Route::delete('/admin/subjects/{id}', [SubjectController::class, 'destroy'])->name('admin.subjects.destroy');
+
+    Route::post('/admin/subjects/{subject}/notes', [SubjectNoteController::class, 'store'])->name('admin.subjects.notes.store');
+    Route::delete('/admin/subjects/{subject}/notes/{note}', [SubjectNoteController::class, 'destroy'])->name('admin.subjects.notes.destroy');
+    Route::get('/admin/subjects/{subject}/notes/{note}/download', [SubjectNoteController::class, 'download'])->name('admin.subjects.notes.download');
+    Route::get('/admin/subjects/{subject}/notes/{note}/preview', [SubjectNoteController::class, 'preview'])->name('admin.subjects.notes.preview');
+    Route::get('/admin/subjects/{subject}/notes/{note}/office', [SubjectNoteController::class, 'officeFrame'])->name('admin.subjects.notes.officeFrame');
 
     // Question
     Route::post('/admin/questions/import', [QuestionController::class, 'import'])
@@ -109,7 +122,6 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     // Tag-Subject Pivot Relationships
     Route::get('/admin/tag-subjects', [TagSubjectController::class, 'index'])->name('admin.tagSubjects.index');
 
-
     // reports
     Route::get('/admin/question-reports', [QuestionReportController::class, 'index'])
         ->name('admin.question-reports.index');
@@ -117,7 +129,4 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::patch('/admin/question-reports/{id}/update-status', [QuestionReportController::class, 'updateStatus'])
         ->name('admin.question-reports.update-status');
 
-    // charts
-    Route::get('/admin/charts', [ChartsController::class, 'index'])
-        ->name('admin.charts.index');
 });

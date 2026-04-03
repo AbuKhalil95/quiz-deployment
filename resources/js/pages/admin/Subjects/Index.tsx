@@ -1,4 +1,4 @@
-import { Head, router } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import AdminLayout from "@/layouts/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import {
     TableRow,
     TableCell,
 } from "@/components/ui/table";
-import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { CreateSubjectDialog } from "./_components/CreateSubjectDialog";
@@ -25,6 +25,7 @@ import { SmartPagination } from "@/components/common/SmartPagination";
 interface Subject {
     id: number;
     name: string;
+    notes_count?: number;
 }
 
 interface Props {
@@ -199,6 +200,9 @@ export default function Index({ subjects, filters }: Props) {
                                     </TableHead>
                                     <TableHead>ID</TableHead>
                                     <TableHead>Name</TableHead>
+                                    <TableHead className="w-[100px] text-center">
+                                        Notes
+                                    </TableHead>
                                     <TableHead className="text-right">
                                         Actions
                                     </TableHead>
@@ -209,7 +213,7 @@ export default function Index({ subjects, filters }: Props) {
                                     <TableRow>
                                         <TableCell className="w-12"></TableCell>
                                         <TableCell
-                                            colSpan={3}
+                                            colSpan={4}
                                             className="text-center"
                                         >
                                             No subjects found
@@ -231,6 +235,39 @@ export default function Index({ subjects, filters }: Props) {
                                             <TableCell>{subject.id}</TableCell>
                                             <TableCell>
                                                 {subject.name}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="gap-1.5"
+                                                    asChild
+                                                    title="Subject notes and details"
+                                                >
+                                                    <Link
+                                                        href={route(
+                                                            "admin.subjects.show",
+                                                            subject.id
+                                                        )}
+                                                    >
+                                                        <FileText
+                                                            className={`h-4 w-4 shrink-0 ${
+                                                                (subject.notes_count ??
+                                                                    0) > 0
+                                                                    ? "text-foreground"
+                                                                    : "text-muted-foreground"
+                                                            }`}
+                                                        />
+                                                        {(subject.notes_count ??
+                                                            0) > 0 && (
+                                                            <span className="text-xs tabular-nums">
+                                                                {
+                                                                    subject.notes_count
+                                                                }
+                                                            </span>
+                                                        )}
+                                                    </Link>
+                                                </Button>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">

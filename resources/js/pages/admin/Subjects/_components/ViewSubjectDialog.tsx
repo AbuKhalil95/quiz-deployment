@@ -10,6 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "@inertiajs/react";
 
 interface Tag {
     id: number;
@@ -116,13 +117,23 @@ export function ViewSubjectDialog({
                     </div>
                 )}
 
-                <DialogFooter>
+                <DialogFooter className="gap-2 sm:gap-0">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                     >
                         Close
                     </Button>
+                    {subject && (
+                        <Button asChild>
+                            <Link
+                                href={route("admin.subjects.show", subject.id)}
+                                onClick={() => onOpenChange(false)}
+                            >
+                                Notes and details
+                            </Link>
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

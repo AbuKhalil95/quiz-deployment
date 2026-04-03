@@ -4,8 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { route } from "ziggy-js";
-import { Clock, BookOpen, Eye, Lightbulb, ArrowLeft } from "lucide-react";
+import { Clock, Eye, Lightbulb, ArrowLeft } from "lucide-react";
 import { SmartPagination } from "@/components/common/SmartPagination";
+import {
+    SubjectNotesReadOnly,
+    type SubjectNoteRow,
+} from "@/components/subject-notes/SubjectNotesReadOnly";
 
 interface Subject {
     id: number;
@@ -23,6 +27,7 @@ interface Quiz {
 
 interface Props {
     subject: Subject;
+    notes: SubjectNoteRow[];
     quizzes: {
         data: Quiz[];
         current_page: number;
@@ -41,7 +46,7 @@ interface Props {
     };
 }
 
-export default function QuizzesBySubject({ subject, quizzes }: Props) {
+export default function QuizzesBySubject({ subject, notes, quizzes }: Props) {
     const handlePageChange = (url: string | null) => {
         if (url) {
             router.visit(url, {
@@ -78,6 +83,15 @@ export default function QuizzesBySubject({ subject, quizzes }: Props) {
                         </Button>
                     </div>
                 </div>
+
+                <SubjectNotesReadOnly
+                    subjectId={subject.id}
+                    notes={notes}
+                    routeScope="student"
+                    title="Study materials"
+                    description="Files shared for this subject (PDF, text, Office)."
+                    emptyMessage="No study materials uploaded for this subject yet."
+                />
 
                 {quizzes.data.filter((q) => q.questions.length > 0).length ===
                 0 ? (
